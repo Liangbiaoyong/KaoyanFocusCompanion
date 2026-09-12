@@ -1,14 +1,13 @@
 {
   "manifest_version": 3,
   "name": "考研专注养成",
-  "version": "0.1.0",
-  "description": "看 PDF 备考时的专注养成伙伴",
-  "permissions": ["storage", "tabs", "idle", "alarms", "sidePanel"],
+  "version": "0.2.0",
+  "description": "看 PDF 备考时的专注养成伙伴 · 画中画悬浮窗",
+  "permissions": ["storage", "tabs", "idle", "alarms"],
   "background": {
     "service_worker": "src/background/service-worker.js",
     "type": "module"
   },
-  "action": { "default_title": "考研专注养成" },
-  "side_panel": { "default_path": "src/sidepanel/index.html" },
+  "action": { "default_title": "考研专注养成 · 打开悬浮窗" },
   "options_page": "src/options/index.html"
 }

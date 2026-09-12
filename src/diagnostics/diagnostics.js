@@ -1,8 +1,9 @@
 async function probe() {
   const result = {};
 
-  // 1. sidePanel API
-  result.sidePanelApi = typeof chrome?.sidePanel?.open === 'function';
+  // 1. Document Picture-in-Picture 支持（悬浮窗的前提）
+  result.documentPipApi = 'documentPictureInPicture' in window;
+  result.documentPipRequest = typeof window.documentPictureInPicture?.requestWindow === 'function';
 
   // 2. 活动标签的 URL（本地 PDF 是否可读）
   try {

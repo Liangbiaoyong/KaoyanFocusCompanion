@@ -277,3 +277,26 @@ manifest.json
 - 网课页面（如 B 站视频页）应默认中性还是引导使用者标记为学习？
 - 补签卡规则是否符合实际节奏？
 - 凤凰是否需要多套形象切换（换装/皮肤）作为额外奖励？
+
+## 13. 变更记录
+
+### 2026-09-12 · 侧边栏 → 画中画悬浮窗
+
+**原因**：使用者无法在 Edge 中打开侧边栏；且侧边栏需要占用页面宽度，阅读 PDF 时不够贴近。
+
+**关键约束（决定了实现方式，见第 9 节）**：内容脚本**无法注入 Edge 自带的 PDF 查看器**。因此"在网页 DOM 里浮一个可拖动元素"这条路在本地 PDF 上完全不可见——而本地 PDF 正是主场景。
+
+**方案**：改用 Document Picture-in-Picture（`documentPictureInPicture.requestWindow()`）开一个**系统级置顶**的浮动窗口。它不依赖页面 DOM，所以能浮在 PDF 查看器之上，拖动由操作系统原生提供。
+
+**代价与约束**：
+
+- 画中画窗口的生命周期绑定在发起它的文档上。因此需要一个常驻的**控制台小窗口**作为锚点（`chrome.windows.create({ type: 'popup' })`）：点扩展图标打开/唤回它，它必须保持存活（可最小化，不可关闭）。
+- 浏览器要求 `requestWindow()` 有用户手势，后台 service worker 无法调用。所以流程是：点扩展图标 → 控制台 → 点「打开悬浮窗」。
+- 若浏览器不支持 Document PiP，自动降级为独立小窗口（失去置顶能力）。
+
+**受影响文件**：
+
+- `manifest.json`：移除 `side_panel` 与 `sidePanel` 权限；版本升至 0.2.0
+- 新增 `src/floating/`：`overlay.html` / `overlay.css` / `overlay.js`（面板本体）+ `launcher.html` / `launcher.js`（控制台与画中画引导）
+- 删除 `src/sidepanel/`（已由悬浮窗取代，可用 `git checkout <commit> -- src/sidepanel` 找回）
+- `src/background/service-worker.js`：新增 `action.onClicked` 与 `windows.onRemoved` 处理

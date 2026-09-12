@@ -13,7 +13,7 @@ describe('manifest', () => {
 
   it('声明了引擎与 UI 所需的最小权限', () => {
     expect(manifest.permissions.sort()).toEqual(
-      ['alarms', 'idle', 'sidePanel', 'storage', 'tabs'].sort(),
+      ['alarms', 'idle', 'storage', 'tabs'].sort(),
     );
   });
 
@@ -22,12 +22,22 @@ describe('manifest', () => {
     for (const key of forbidden) expect(manifest[key]).toBeUndefined();
   });
 
+  it('不再声明侧边栏（已改为画中画悬浮窗）', () => {
+    expect(manifest.side_panel).toBeUndefined();
+    expect(manifest.permissions).not.toContain('sidePanel');
+  });
+
+  it('action 不设 default_popup，保证 action.onClicked 能触发', () => {
+    expect(manifest.action.default_popup).toBeUndefined();
+    expect(manifest.action.popup).toBeUndefined();
+  });
+
   it('背景脚本是 ESM', () => {
     expect(manifest.background.type).toBe('module');
     expect(manifest.background.service_worker).toBe('src/background/service-worker.js');
   });
 
-  it('侧边栏指向 sidepanel/index.html', () => {
-    expect(manifest.side_panel.default_path).toBe('src/sidepanel/index.html');
+  it('设置页入口存在', () => {
+    expect(manifest.options_page).toBe('src/options/index.html');
   });
 });

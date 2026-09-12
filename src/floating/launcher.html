@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>考研专注养成 · 控制台</title>
+    <link rel="stylesheet" href="overlay.css" />
+    <style>
+      body { padding: 13px 15px; }
+      h1 { font-size: 12px; font-weight: 600; margin: 0 0 9px; letter-spacing: .5px; color: var(--dim); }
+      button {
+        font: inherit; font-size: 12px; padding: 7px 13px; border-radius: 4px;
+        cursor: pointer; background: var(--accent); border: 1px solid var(--accent); color: #fff;
+      }
+      button.ghost { background: #fff; color: var(--ink); border-color: var(--line); }
+      button:disabled { opacity: .5; cursor: default; }
+      .row2 { display: flex; gap: 8px; margin-top: 11px; flex-wrap: wrap; }
+      .hint { font-size: 10px; color: var(--dim); line-height: 1.7; margin: 8px 0 0; }
+      .ok { color: #4b7a52; }
+      .sep { margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--line); }
+    </style>
+  </head>
+  <body>
+    <h1>考研专注养成</h1>
+
+    <div id="panel"></div>
+
+    <div class="row2">
+      <button id="openPip">打开悬浮窗</button>
+      <button id="openOptions" class="ghost">设置</button>
+      <button id="openStats" class="ghost">统计</button>
+    </div>
+    <p class="hint" id="status"></p>
+
+    <p class="hint sep">
+      悬浮窗打开后，拖它的标题栏就能移动，它会一直浮在所有窗口之上。<br />
+      这个窗口<strong>可以最小化，但不要关闭</strong>——悬浮窗的生命周期绑在它身上。
+    </p>
+
+    <script type="module" src="overlay.js"></script>
+    <script type="module" src="launcher.js"></script>
+  </body>
+</html>

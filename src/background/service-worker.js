@@ -100,6 +100,45 @@ for (const event of [chrome.tabs.onActivated, chrome.tabs.onUpdated, chrome.wind
 
 chrome.idle.onStateChanged.addListener(() => kick());
 
+const LAUNCHER_KEY = 'launcherWindowId';
+
+/**
+ * 点扩展图标 → 打开（或唤回）控制台小窗口。
+ * 悬浮窗必须由一个活着的文档发起，所以控制台窗口不能关，只能最小化。
+ */
+async function openLauncher() {
+  const stored = await chrome.storage.local.get(LAUNCHER_KEY);
+  const id = stored[LAUNCHER_KEY];
+  if (typeof id === 'number') {
+    try {
+      await chrome.windows.update(id, { focused: true });
+      return;
+    } catch {
+      /* 窗口已关闭，往下走新建一个 */
+    }
+  }
+  const win = await chrome.windows.create({
+    url: chrome.runtime.getURL('src/floating/launcher.html'),
+    type: 'popup',
+    width: 380,
+    height: 340,
+    left: 60,
+    top: 60,
+  });
+  await chrome.storage.local.set({ [LAUNCHER_KEY]: win.id });
+}
+
+chrome.action.onClicked.addListener(() => {
+  openLauncher();
+});
+
+chrome.windows.onRemoved.addListener(async (windowId) => {
+  const stored = await chrome.storage.local.get(LAUNCHER_KEY);
+  if (stored[LAUNCHER_KEY] === windowId) {
+    await chrome.storage.local.remove(LAUNCHER_KEY);
+  }
+});
+
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
   if (changes[STORAGE_KEYS.settings]) {

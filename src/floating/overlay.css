@@ -1,0 +1,112 @@
+:root {
+  --bg: #f7f9fa;
+  --ink: #2e3a44;
+  --dim: #7d8b98;
+  --line: #dde4ea;
+  --track: #e4eaef;
+  --accent: #5b7fa6;
+  --rock: #a7b8c5;
+  --warm: #e0a44a;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+#panel {
+  padding: 10px 12px 11px;
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.time {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.dim { font-size: 10px; color: var(--dim); }
+.small { font-size: 11px; }
+
+.bar {
+  height: 4px;
+  background: var(--track);
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 7px 0 8px;
+}
+.bar > i {
+  display: block;
+  height: 100%;
+  background: var(--warm);
+  border-radius: 2px;
+  transition: width 400ms ease;
+}
+
+.companion {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 7px;
+}
+.companion .emoji { font-size: 22px; line-height: 1; }
+.companion[data-mood="dozing"] .emoji { opacity: 0.55; filter: saturate(0.5); }
+.companion[data-mood="wilted"] .emoji { opacity: 0.35; filter: saturate(0.15); }
+
+.state { font-size: 11px; color: var(--accent); }
+
+/* 山：一条从山脚到山巅的横向进度，两头各有标记 */
+.mountain {
+  position: relative;
+  height: 12px;
+  margin: 9px 0 4px;
+}
+.mountain .rail {
+  position: absolute;
+  left: 0; right: 0; top: 5px;
+  height: 2px;
+  background: var(--track);
+}
+.mountain .time-mark,
+.mountain .you-mark {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 12px;
+  transform: translateX(-1px);
+}
+.mountain .time-mark { background: rgba(46, 58, 68, 0.35); }
+.mountain .you-mark { background: var(--accent); }
+.mountain .peaks {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--dim);
+}
+
+.foot {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--dim);
+  margin-top: 8px;
+  padding-top: 7px;
+  border-top: 1px solid var(--line);
+}
+
+.hint { font-size: 10px; color: var(--dim); line-height: 1.6; }
