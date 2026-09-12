@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>欢迎 · 考研专注养成</title>
+    <style>
+      :root { --bg:#f7f9fa; --ink:#2e3a44; --dim:#7d8b98; --line:#dde4ea; --accent:#5b7fa6; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; padding: 48px 24px; background: var(--bg); color: var(--ink);
+        font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+      }
+      .wrap { max-width: 560px; margin: 0 auto; }
+      h1 { font-size: 22px; font-weight: 600; margin: 0 0 8px; }
+      p.lead { color: var(--dim); font-size: 13px; line-height: 1.8; margin: 0 0 28px; }
+      .step { background:#fff; border:1px solid var(--line); border-radius:6px; padding:16px; margin-bottom:12px; }
+      .step h2 { font-size: 13px; font-weight: 600; margin: 0 0 10px; }
+      label { display:block; font-size: 12px; color: var(--dim); margin-bottom: 6px; }
+      input {
+        font: inherit; padding: 8px 10px; border:1px solid var(--line);
+        border-radius:4px; width: 100%; color: inherit; background:#fff;
+      }
+      button {
+        font: inherit; padding: 9px 18px; border-radius:4px; cursor:pointer;
+        background: var(--accent); border:1px solid var(--accent); color:#fff;
+      }
+      button.ghost { background:#fff; color: var(--ink); border-color: var(--line); }
+      button:disabled { opacity: .55; cursor: default; }
+      .row { display:flex; gap:10px; margin-top: 12px; align-items:center; flex-wrap: wrap; }
+      .hint { font-size: 11px; color: var(--dim); line-height:1.7; }
+      .done { color: #4b7a52; font-weight:600; }
+      code { background:#eef2f5; padding:1px 5px; border-radius:3px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>欢迎</h1>
+      <p class="lead">
+        你专注读 PDF，凤凰就长大；你走神，它就打盹。山巅是考试那天，海拔是你攒下的专注。
+        四步设好，就能开始。
+      </p>
+
+      <div class="step">
+        <h2>1 · 考试日期</h2>
+        <label for="examDate">你的考试日</label>
+        <input type="date" id="examDate" />
+      </div>
+
+      <div class="step">
+        <h2>2 · 每日目标</h2>
+        <label for="dailyGoalMinutes">每天打算专注多少分钟</label>
+        <input type="number" id="dailyGoalMinutes" min="1" max="1440" value="300" />
+      </div>
+
+      <div class="step">
+        <h2>3 · 给凤凰起个名字</h2>
+        <label for="companionName">它叫什么</label>
+        <input type="text" id="companionName" maxlength="12" value="小凤" />
+      </div>
+
+      <div class="step">
+        <h2>4 · 开启文件访问权限</h2>
+        <p class="hint">
+          扩展需要读取本地 PDF 的地址才能计时。打开 <code>edge://extensions</code> 里本扩展的详情页，
+          开启"<strong>允许访问文件网址</strong>"，然后在 Edge 里随便打开一个本地 PDF，再回来点下面的检查按钮。
+        </p>
+        <div class="row">
+          <button class="ghost" id="copyExtensions">复制 edge://extensions</button>
+          <button class="ghost" id="checkAccess">检查是否已开启</button>
+        </div>
+        <p class="hint" id="accessStatus"></p>
+      </div>
+
+      <div class="row">
+        <button id="finish">完成，开始</button>
+        <span id="saveStatus" class="hint"></span>
+      </div>
+
+      <p class="hint">
+        设好后：点扩展图标 → 在侧边栏中打开，就能看到凤凰和山。
+      </p>
+    </div>
+    <script type="module" src="onboarding.js"></script>
+  </body>
+</html>
