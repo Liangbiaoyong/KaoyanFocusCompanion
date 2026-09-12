@@ -1,65 +1,70 @@
-# 探针 v2：唤醒 Chromium 无障碍树后再试读地址栏。
-# 只读：查询无障碍树，不发送任何输入、不修改任何设置。
+# 精确探针：常驻循环，读前台窗口标题与浏览器地址栏内容。
+# 只读：查询无障碍树，不发送任何输入、不修改任何系统设置。
+#
+# 输出每行一个 JSON：{ title, url, at }
+# process / idleMs 由基础探针 foreground.ps1 提供，由 probe.mjs 的 mergeSample 合并。
 param(
-  [int]$MaxWindows = 3,
-  [int]$SettleMs = 2500
+  [int]$Interval = 3000,
+  [int]$MaxIterations = 0
 )
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 Add-Type -AssemblyName UIAutomationClient
 Add-Type -AssemblyName UIAutomationTypes
 
-$browsers = Get-Process -ErrorAction SilentlyContinue |
-  Where-Object { $_.MainWindowHandle -ne 0 -and $_.ProcessName -match '^(msedge|chrome|firefox)$' } |
-  Select-Object -First $MaxWindows
-
-if (-not $browsers) {
-  '{"note":"没有找到带窗口的浏览器进程"}'
-  exit 0
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+using System.Text;
+public class WinFg {
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowTextLength(IntPtr h);
+  public static string Title(IntPtr hWnd) {
+    int len = GetWindowTextLength(hWnd);
+    if (len <= 0) return "";
+    StringBuilder sb = new StringBuilder(len + 1);
+    GetWindowText(hWnd, sb, sb.Capacity);
+    return sb.ToString();
+  }
 }
+"@
 
-$roots = @()
-foreach ($p in $browsers) {
-  try {
-    $roots += [pscustomobject]@{
-      proc = $p
-      root = [System.Windows.Automation.AutomationElement]::FromHandle($p.MainWindowHandle)
-    }
-  } catch { }
-}
+# 中文系统是「地址和搜索栏」，英文是「Address and search bar」。
+# AutomationId 每次都会变，只有控件名稳定，所以按 Name 找。
+$ADDRESS_NAMES = @('地址和搜索栏', 'Address and search bar')
 
-# 第一次触碰会向 Chromium 发 WM_GETOBJECT，促使它开始构建无障碍树
-Start-Sleep -Milliseconds $SettleMs
+$iterations = 0
+while ($true) {
+  $hWnd = [WinFg]::GetForegroundWindow()
+  $title = [WinFg]::Title($hWnd)
+  $url = $null
 
-foreach ($item in $roots) {
-  $root = $item.root
-  if (-not $root) { continue }
-
-  $edits = @()
-  try {
-    $cond = New-Object System.Windows.Automation.PropertyCondition(
-      [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
-      [System.Windows.Automation.ControlType]::Edit)
-    $found = $root.FindAll([System.Windows.Automation.TreeScope]::Descendants, $cond)
-    foreach ($el in $found) {
-      $value = ''
-      try {
-        $vp = $el.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern)
-        $value = $vp.Current.Value
-      } catch { $value = '<无 ValuePattern>' }
-      $edits += [ordered]@{
-        name         = $el.Current.Name
-        automationId = $el.Current.AutomationId
-        value        = $value
+  if ($hWnd -ne [IntPtr]::Zero) {
+    try {
+      $root = [System.Windows.Automation.AutomationElement]::FromHandle($hWnd)
+      if ($root) {
+        foreach ($name in $ADDRESS_NAMES) {
+          $cond = New-Object System.Windows.Automation.PropertyCondition(
+            [System.Windows.Automation.AutomationElement]::NameProperty, $name)
+          $el = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $cond)
+          if ($el) {
+            $vp = $el.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern)
+            $value = $vp.Current.Value
+            if ($value) { $url = $value; break }
+          }
+        }
       }
-    }
-  } catch { }
+    } catch { $url = $null }
+  }
 
   [ordered]@{
-    process     = $item.proc.ProcessName
-    pid         = $item.proc.Id
-    windowTitle = $item.proc.MainWindowTitle
-    editCount   = $edits.Count
-    edits       = $edits
-  } | ConvertTo-Json -Compress -Depth 5
+    title = $title
+    url   = $url
+    at    = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+  } | ConvertTo-Json -Compress
+
+  $iterations++
+  if ($MaxIterations -gt 0 -and $iterations -ge $MaxIterations) { break }
+  Start-Sleep -Milliseconds $Interval
 }

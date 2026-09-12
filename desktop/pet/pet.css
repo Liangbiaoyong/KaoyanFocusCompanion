@@ -1,0 +1,127 @@
+:root {
+  --ink: #2e3a44;
+  --dim: #7d8b98;
+  --track: #e4eaef;
+  --accent: #5b7fa6;
+  --warm: #e0a44a;
+  --line: #dde4ea;
+  --card: rgba(250, 252, 253, 0.95);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  color: var(--ink);
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+#stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  padding: 6px 6px 8px;
+}
+
+/* 凤凰背后的一层柔光，让透明窗口里的形象不至于"飘"在半空 */
+.halo {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  width: 150px;
+  height: 150px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(91, 127, 166, 0.20), rgba(91, 127, 166, 0) 68%);
+  pointer-events: none;
+  transition: opacity 500ms ease;
+}
+
+.phoenix {
+  position: relative;
+  font-size: 62px;
+  line-height: 1.1;
+  cursor: grab;
+  /* 整只凤凰就是拖拽区 */
+  -webkit-app-region: drag;
+  filter: drop-shadow(0 5px 12px rgba(46, 58, 68, 0.26));
+  transition: opacity 400ms ease, filter 400ms ease, transform 400ms ease;
+}
+.phoenix:active { cursor: grabbing; }
+
+.phoenix[data-mood="alive"] { animation: breathe 3.6s ease-in-out infinite; }
+.phoenix[data-mood="dozing"] { opacity: 0.62; filter: saturate(0.5) drop-shadow(0 5px 12px rgba(46,58,68,.18)); }
+.phoenix[data-mood="wilted"] { opacity: 0.4; filter: saturate(0.12) drop-shadow(0 5px 12px rgba(46,58,68,.14)); }
+.phoenix[data-paused="true"] { filter: grayscale(1) opacity(0.45); animation: none; }
+
+@keyframes breathe {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-3px) scale(1.035); }
+}
+
+.bubble {
+  position: relative;
+  width: 100%;
+  margin-top: 8px;
+  padding: 9px 11px 10px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  box-shadow: 0 5px 16px rgba(46, 58, 68, 0.16);
+  -webkit-app-region: no-drag;
+}
+.bubble[hidden] { display: none; }
+
+.row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.time { font-size: 19px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: 0.3px; }
+.dim { font-size: 10px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.bar {
+  height: 4px;
+  background: var(--track);
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 6px 0 6px;
+}
+.bar > i {
+  display: block;
+  height: 100%;
+  background: var(--warm);
+  border-radius: 2px;
+  transition: width 400ms ease;
+}
+
+.state {
+  font-size: 11px;
+  color: var(--accent);
+  margin-top: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mountain { position: relative; height: 12px; margin: 9px 0 3px; }
+.mountain .rail { position: absolute; left: 0; right: 0; top: 5px; height: 2px; background: var(--track); }
+.mountain .time-mark,
+.mountain .you-mark {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 12px;
+  transform: translateX(-1px);
+  transition: left 500ms ease;
+}
+.mountain .time-mark { background: rgba(46, 58, 68, 0.32); }
+.mountain .you-mark { background: var(--accent); }

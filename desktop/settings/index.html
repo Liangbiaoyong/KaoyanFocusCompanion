@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>考研专注养成 · 设置</title>
+    <link rel="stylesheet" href="settings.css" />
+  </head>
+  <body>
+    <h1>考研专注养成 · 设置</h1>
+
+    <section class="card">
+      <h2>计分口径</h2>
+      <label>学习来源
+        <select id="mode">
+          <option value="browser">只有浏览器在前台才算</option>
+          <option value="global">任何窗口在前台都算</option>
+        </select>
+      </label>
+      <label>空闲多久算离开（分钟）
+        <input type="number" id="watchdogMinutes" min="1" max="120" />
+      </label>
+
+      <label class="check">
+        <input type="checkbox" id="exactMode" />
+        <span>精确模式：读取浏览器地址栏内容做域名判定</span>
+      </label>
+      <p class="warn">
+        开启后 Chrome / Edge 会<strong>常驻在无障碍模式下</strong>（浏览器自身的持续开销）。
+        控件名与无障碍树随浏览器版本变化，可能失效；读不到时会自动退回标题匹配。
+        平时建议关着。
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>浏览器白名单</h2>
+      <p class="hint">前台进程命中这些名字才算"在学习"。默认含 Edge / Chrome / Firefox。</p>
+      <ul id="browsersList" class="rules"></ul>
+      <div class="add">
+        <input type="text" id="browsersInput" placeholder="msedge.exe" />
+        <button id="browsersAdd">添加</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>学习外网站</h2>
+      <p class="hint">命中任一条即停表并记一次走神。默认含哔哩哔哩与知乎。</p>
+
+      <h3>标题关键词（普通模式）</h3>
+      <ul id="blockedKeywordsList" class="rules"></ul>
+      <div class="add">
+        <input type="text" id="blockedKeywordsInput" placeholder="哔哩哔哩" />
+        <button id="blockedKeywordsAdd">添加</button>
+      </div>
+
+      <h3>域名（仅精确模式生效）</h3>
+      <ul id="blockedDomainsList" class="rules"></ul>
+      <div class="add">
+        <input type="text" id="blockedDomainsInput" placeholder="bilibili.com" />
+        <button id="blockedDomainsAdd">添加</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>最近出现过的窗口</h2>
+      <p class="hint">
+        在你想屏蔽的页面上停一下再切回来，它就会出现在这里。
+        点「取关键词」会把猜测填进上面的输入框——机器猜不准站名在哪一段，你看一眼改两个字再点添加。
+      </p>
+      <ul id="recentList" class="rules"></ul>
+    </section>
+
+    <section class="card">
+      <h2>目标</h2>
+      <label>考试日期 <input type="date" id="examDate" /></label>
+      <label>每日目标（分钟） <input type="number" id="dailyGoalMinutes" min="1" max="1440" /></label>
+      <label>每日计入上限（分钟） <input type="number" id="dailyCapMinutes" min="1" max="1440" /></label>
+      <label>凤凰名字 <input type="text" id="companionName" maxlength="12" /></label>
+      <p class="hint" id="startDateHint"></p>
+    </section>
+
+    <div class="actions">
+      <button id="save" class="primary">保存</button>
+      <button id="close" class="ghost">关闭</button>
+      <span id="status" class="hint"></span>
+    </div>
+
+    <script type="module" src="settings.js"></script>
+  </body>
+</html>
