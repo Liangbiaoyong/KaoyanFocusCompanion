@@ -1,0 +1,125 @@
+:root {
+  --bg: #f7f9fa;
+  --ink: #2e3a44;
+  --dim: #7d8b98;
+  --line: #dde4ea;
+  --track: #e4eaef;
+  --rock-back: #c3d0da;
+  --rock-front: #a7b8c5;
+  --accent: #5b7fa6;
+  --sky-top: #e9eef3;
+  --sky-bottom: #f7f9fa;
+  --p-you: 0;
+  --p-time: 0;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+}
+
+.scene {
+  position: relative;
+  height: 200px;
+  overflow: hidden;
+  background: linear-gradient(var(--sky-top), var(--sky-bottom));
+}
+
+.mountain {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+}
+.mountain.back {
+  border-left: 160px solid transparent;
+  border-right: 160px solid transparent;
+  border-bottom: 180px solid var(--rock-back);
+}
+.mountain.front {
+  border-left: 108px solid transparent;
+  border-right: 108px solid transparent;
+  border-bottom: 126px solid var(--rock-front);
+}
+
+.flag {
+  position: absolute;
+  left: 50%;
+  bottom: 178px;
+  transform: translateX(-50%);
+  font-size: 14px;
+}
+
+/* 凤凰站在"你当前海拔"处：用 --p-you 驱动垂直位置 */
+.companion {
+  position: absolute;
+  left: 32%;
+  bottom: calc(20px + var(--p-you) * 130px);
+  font-size: 30px;
+  transition: bottom 600ms ease;
+}
+.companion[data-mood="dozing"] { opacity: 0.55; filter: saturate(0.5); }
+.companion[data-mood="wilted"] { opacity: 0.35; filter: saturate(0.15); }
+
+/* 两条进度线：时间线（虚）与你的线（实） */
+.lines { position: absolute; inset: 0; }
+.line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+}
+.line.time {
+  border-top: 1px dashed rgba(46, 58, 68, 0.35);
+  bottom: calc(20px + var(--p-time) * 130px);
+}
+.line.you {
+  background: var(--accent);
+  opacity: 0.75;
+  bottom: calc(20px + var(--p-you) * 130px);
+}
+
+.altitude {
+  position: absolute;
+  left: 9px;
+  bottom: 9px;
+  font-size: 10px;
+  color: #63735c;
+}
+
+.panel { padding: 12px 13px 14px; }
+
+.row-primary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.big-time {
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  font-variant-numeric: tabular-nums;
+}
+.dim { font-size: 10px; color: var(--dim); }
+
+.spirit { margin-top: 10px; }
+.track { height: 4px; background: var(--track); overflow: hidden; }
+.fill { height: 100%; width: 0; background: var(--accent); transition: width 400ms ease; }
+
+.meta { margin-top: 12px; display: grid; gap: 4px; }
+
+.foot {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--dim);
+}

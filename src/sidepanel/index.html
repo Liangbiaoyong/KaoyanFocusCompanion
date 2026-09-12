@@ -3,8 +3,44 @@
   <head>
     <meta charset="utf-8" />
     <title>考研专注养成</title>
+    <link rel="stylesheet" href="panel.css" />
   </head>
-  <body style="font-family: system-ui; padding: 12px">
-    <p>侧边栏骨架</p>
+  <body>
+    <main id="sky" class="scene">
+      <div class="mountain back"></div>
+      <div class="mountain front"></div>
+      <div id="flag" class="flag">&#127937;</div>
+      <div id="companion" class="companion" data-mood="dozing">&#128035;</div>
+      <div class="lines">
+        <div class="line time"></div>
+        <div class="line you"></div>
+      </div>
+      <div id="altitude" class="altitude"></div>
+    </main>
+
+    <section class="panel">
+      <div class="row-primary">
+        <span id="today-time" class="big-time">00:00:00</span>
+        <span id="today-goal" class="dim">今日 0%</span>
+      </div>
+
+      <div class="spirit">
+        <div class="track"><div id="spirit-bar" class="fill"></div></div>
+        <div id="companion-line" class="dim"></div>
+      </div>
+
+      <div class="meta">
+        <div id="stage-line" class="dim"></div>
+        <div id="state-line" class="dim"></div>
+        <div id="delta-line" class="dim"></div>
+      </div>
+
+      <div class="foot">
+        <span id="streak-line"></span>
+        <span id="total-line"></span>
+      </div>
+    </section>
+
+    <script type="module" src="panel.js"></script>
   </body>
 </html>
