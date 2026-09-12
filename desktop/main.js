@@ -97,6 +97,7 @@ let pushRecentTitle = null;
 let buildRules = null;
 let addSegment = null;
 let recordSegments = null;
+let addDistraction = null;
 let DEFAULT_RULES = null;
 
 async function loadModules() {
@@ -115,7 +116,7 @@ async function loadModules() {
   ({ createProbe, mergeSample } = await own('probe.mjs'));
   ({ toEngineInput, pushRecentTitle } = await own('detect.mjs'));
   ({ buildRules } = await own('self.mjs'));
-  ({ addSegment, recordSegments } = await own('segments.mjs'));
+  ({ addSegment, recordSegments, addDistraction } = await own('segments.mjs'));
   ({ DEFAULT_RULES } = await own('rules.mjs'));
 }
 
@@ -372,6 +373,11 @@ async function onSample(rawSample) {
     account = next.account;
     daily = next.daily;
     if (result.focusMs > 0) recordSegments(daily, result.fromMs, result.toMs);
+    if (result.distractions > 0) {
+      const day = dayKey(result.toMs);
+      const record = daily[day] ?? (daily[day] = {});
+      record.distractionTimes = addDistraction(record.distractionTimes, result.toMs);
+    }
 
     await store.saveState({ session, account });
     await store.saveDaily(daily);

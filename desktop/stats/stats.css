@@ -29,6 +29,30 @@ h2 { font-size: 13px; font-weight: 600; margin: 0 0 12px; }
   margin-bottom: 14px;
 }
 
+.hours {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 90px;
+}
+.hbar {
+  flex: 1;
+  background: var(--short);
+  border-radius: 2px 2px 0 0;
+  min-height: 2px;
+  transition: height 300ms ease;
+}
+.hbar.none { background: var(--track); }
+.hbar.peak { background: #c0392b; }
+
+.hour-scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--dim);
+  margin-top: 4px;
+}
+
 .timeline { position: relative; height: 24px; }
 .tl-track {
   position: absolute;

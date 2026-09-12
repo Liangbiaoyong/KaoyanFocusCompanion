@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { addSegment, normalizeSegments, segmentBars, formatSegment, recordSegments } from '../src/segments.mjs';
+import {
+  addSegment, normalizeSegments, segmentBars, formatSegment, recordSegments,
+  addDistraction, hourlyHistogram, peakBucket,
+} from '../src/segments.mjs';
 
 const at = (h, m = 0) => new Date(2026, 8, 12, h, m, 0, 0).getTime();
 const MIN = 60 * 1000;
@@ -199,5 +202,71 @@ describe('recordSegments', () => {
 
   it('daily 为空值时安全', () => {
     expect(() => recordSegments(null, at(9), at(10))).not.toThrow();
+  });
+});
+
+describe('addDistraction', () => {
+  it('追加时刻', () => {
+    expect(addDistraction([], at(15))).toEqual([at(15)]);
+  });
+
+  it('超过上限时丢掉最早的', () => {
+    let list = [];
+    for (let i = 0; i < 10; i += 1) list = addDistraction(list, at(9) + i * MIN, 3);
+    expect(list).toEqual([at(9) + 7 * MIN, at(9) + 8 * MIN, at(9) + 9 * MIN]);
+  });
+
+  it('非法时刻被忽略', () => {
+    expect(addDistraction([at(9)], NaN)).toEqual([at(9)]);
+    expect(addDistraction([at(9)], 'x')).toEqual([at(9)]);
+  });
+
+  it('不改动入参数组', () => {
+    const original = [at(9)];
+    const snapshot = JSON.stringify(original);
+    addDistraction(original, at(10));
+    expect(JSON.stringify(original)).toBe(snapshot);
+  });
+
+  it('null 输入按空数组处理', () => {
+    expect(addDistraction(null, at(9))).toEqual([at(9)]);
+  });
+});
+
+describe('hourlyHistogram', () => {
+  it('按小时分桶计数', () => {
+    const hist = hourlyHistogram([at(9, 5), at(9, 40), at(15, 0)]);
+    expect(hist).toHaveLength(24);
+    expect(hist[9]).toBe(2);
+    expect(hist[15]).toBe(1);
+    expect(hist[0]).toBe(0);
+  });
+
+  it('空输入返回全零', () => {
+    expect(hourlyHistogram([]).every((n) => n === 0)).toBe(true);
+    expect(hourlyHistogram(null)).toHaveLength(24);
+  });
+
+  it('非法值被跳过', () => {
+    const hist = hourlyHistogram([NaN, 'x', at(1)]);
+    expect(hist.reduce((a, b) => a + b, 0)).toBe(1);
+  });
+});
+
+describe('peakBucket', () => {
+  it('返回计数最高的桶', () => {
+    const hist = new Array(24).fill(0);
+    hist[15] = 7;
+    hist[9] = 3;
+    expect(peakBucket(hist)).toEqual({ index: 15, count: 7 });
+  });
+
+  it('全零返回 null', () => {
+    expect(peakBucket(new Array(24).fill(0))).toBeNull();
+  });
+
+  it('空输入返回 null', () => {
+    expect(peakBucket([])).toBeNull();
+    expect(peakBucket(null)).toBeNull();
   });
 });

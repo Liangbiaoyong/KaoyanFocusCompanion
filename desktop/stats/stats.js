@@ -1,5 +1,5 @@
 import { dayKey } from '../../src/core/time.js';
-import { segmentBars, formatSegment } from '../src/segments.mjs';
+import { segmentBars, formatSegment, hourlyHistogram, peakBucket } from '../src/segments.mjs';
 
 const $ = (id) => document.getElementById(id);
 const DAYS = 30;
@@ -50,6 +50,31 @@ function renderToday(daily) {
     : `今天专注 ${bars.length} 段，合计 ${Math.round(minutes)} 分钟（${(minutes / 60).toFixed(1)} 小时）`;
 }
 
+/** 走神热点：知道"今天走神 5 次"没用，知道"每天下午三点必走神"才能改 */
+function renderHours(daily, days) {
+  const times = days.flatMap((day) => daily[day]?.distractionTimes ?? []);
+  const hist = hourlyHistogram(times);
+  const peak = peakBucket(hist);
+  const max = Math.max(1, ...hist);
+
+  const wrap = $('hours');
+  wrap.textContent = '';
+  hist.forEach((count, hour) => {
+    const bar = document.createElement('div');
+    bar.className = 'hbar';
+    if (count === 0) bar.classList.add('none');
+    else if (peak && peak.index === hour) bar.classList.add('peak');
+    bar.style.height = count === 0 ? '2px' : `${Math.max(6, (count / max) * 100)}%`;
+    bar.title = `${hour} 点：${count} 次`;
+    wrap.append(bar);
+  });
+
+  const total = hist.reduce((sum, n) => sum + n, 0);
+  $('hoursHint').textContent = peak
+    ? `最近 30 天共走神 ${total} 次，最集中在 ${peak.index}–${peak.index + 1} 点（${peak.count} 次）。`
+    : '最近 30 天还没有走神记录。';
+}
+
 function lastNDays(now, count) {
   const out = [];
   const todayStart = new Date(now).setHours(0, 0, 0, 0);
@@ -72,6 +97,7 @@ function render({ daily, snapshot }) {
   const now = Date.now();
   renderToday(daily ?? {});
   const days = lastNDays(now, DAYS);
+  renderHours(daily ?? {}, days);
   const goalMs = snapshot?.settings?.dailyGoalMs ?? 0;
 
   const bars = $('bars');

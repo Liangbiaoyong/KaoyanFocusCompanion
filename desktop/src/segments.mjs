@@ -1,10 +1,10 @@
 import { splitByDay } from '../../src/core/time.js';
 
 /**
- * 专注时段片段。
+ * 时段与走神记录。
  *
  * 只记录"总量"看不出模式——想到"我晚上效率高"或"下午三点必走神"，
- * 必须有时间段。片段按相邻合并，否则每分钟都会留下一条记录。
+ * 必须有时间信息。片段/时刻都按相邻合并或限量，否则每次 tick 都会留下一条。
  */
 
 /** 把一段专注并入当日时段列表。与上一段间隔小于 gapMs 就延长它。 */
@@ -83,4 +83,36 @@ export function recordSegments(daily, fromMs, toMs, gapMs = 120000) {
     record.segments = addSegment(record.segments, start, cursor, gapMs);
   }
   return daily;
+}
+
+/** 记录一次走神的时刻。上限之外丢掉最早的，避免单日数组无限增长。 */
+export function addDistraction(times, atMs, max = 500) {
+  const list = Array.isArray(times) ? times.slice() : [];
+  if (!Number.isFinite(atMs)) return list;
+  list.push(atMs);
+  return list.length > max ? list.slice(list.length - max) : list;
+}
+
+/** 把若干时刻按"一天中的第几小时"聚合，用于找出走神热点 */
+export function hourlyHistogram(times, buckets = 24) {
+  const out = new Array(buckets).fill(0);
+  for (const t of times ?? []) {
+    if (!Number.isFinite(t)) continue;
+    const hour = new Date(t).getHours();
+    if (hour >= 0 && hour < buckets) out[hour] += 1;
+  }
+  return out;
+}
+
+/** 找出计数最高的桶；全为 0 时返回 null */
+export function peakBucket(histogram) {
+  let best = null;
+  let bestCount = 0;
+  (histogram ?? []).forEach((count, index) => {
+    if (count > bestCount) {
+      bestCount = count;
+      best = index;
+    }
+  });
+  return best === null ? null : { index: best, count: bestCount };
 }
