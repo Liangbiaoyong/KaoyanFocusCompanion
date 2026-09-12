@@ -91,3 +91,34 @@ describe('切走惩罚的节流窗口', () => {
     expect(normalizeSettings({ awayPenaltyWindowMinutes: -1 }, NOW).awayPenaltyWindowMs).toBe(0);
   });
 });
+
+describe('目标名称可自定义（不一定是考研）', () => {
+  it('默认是"考试"', () => {
+    expect(defaultSettings(NOW).targetLabel).toBe('考试');
+    expect(normalizeSettings({}, NOW).targetLabel).toBe('考试');
+  });
+
+  it('可以改成任意名称', () => {
+    expect(normalizeSettings({ targetLabel: '考研初试' }, NOW).targetLabel).toBe('考研初试');
+    expect(normalizeSettings({ targetLabel: '项目截止' }, NOW).targetLabel).toBe('项目截止');
+    expect(normalizeSettings({ targetLabel: '婚礼' }, NOW).targetLabel).toBe('婚礼');
+  });
+
+  it('去掉首尾空白', () => {
+    expect(normalizeSettings({ targetLabel: '  期末考  ' }, NOW).targetLabel).toBe('期末考');
+  });
+
+  it('空白回落默认', () => {
+    expect(normalizeSettings({ targetLabel: '   ' }, NOW).targetLabel).toBe('考试');
+    expect(normalizeSettings({ targetLabel: null }, NOW).targetLabel).toBe('考试');
+  });
+
+  it('过长时截断，避免撑坏桌宠那一行', () => {
+    const long = '一二三四五六七八九十';
+    expect(normalizeSettings({ targetLabel: long }, NOW).targetLabel.length).toBeLessThanOrEqual(8);
+  });
+
+  it('名字字段同样处理', () => {
+    expect(normalizeSettings({ companionName: '  小凤  ' }, NOW).companionName).toBe('小凤');
+  });
+});

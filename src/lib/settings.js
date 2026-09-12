@@ -12,6 +12,7 @@ export function defaultSettings(now) {
     watchdogMinutes: 10,
     awayPenaltyMinutes: 1,
     awayPenaltyWindowMinutes: 3,
+    targetLabel: '考试',
     companionName: '小凤',
   };
 }
@@ -19,9 +20,9 @@ export function defaultSettings(now) {
 export function normalizeSettings(raw, now) {
   const d = defaultSettings(now);
   const r = raw ?? {};
-  const name = typeof r.companionName === 'string' && r.companionName.trim() !== ''
-    ? r.companionName.trim()
-    : d.companionName;
+  const text = (value, fallback) => (
+    typeof value === 'string' && value.trim() !== '' ? value.trim() : fallback
+  );
   return {
     examDateMs: parseDayKey(r.examDate ?? d.examDate),
     startDateMs: parseDayKey(r.startDate ?? d.startDate),
@@ -31,6 +32,8 @@ export function normalizeSettings(raw, now) {
     awayPenaltyMs: Math.max(0, (r.awayPenaltyMinutes ?? d.awayPenaltyMinutes)) * MINUTE,
     awayPenaltyWindowMs:
       Math.max(0, (r.awayPenaltyWindowMinutes ?? d.awayPenaltyWindowMinutes)) * MINUTE,
-    companionName: name,
+    // 目标是"某件有截止日的事"，不一定是考研——名称可自定义
+    targetLabel: text(r.targetLabel, d.targetLabel).slice(0, 8),
+    companionName: text(r.companionName, d.companionName),
   };
 }

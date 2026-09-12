@@ -61,6 +61,10 @@ let tray = null;
 let probe = null;
 let urlProbe = null;
 let petBounds = null;
+let petFlipped = false;
+
+/** 面板展开/收起时的窗口尺寸，以及蛋所占的高度带 */
+const LAYOUT = { expanded: 252, collapsed: 140, phoenixBand: 98, edge: 6 };
 let paused = false;
 let disposed = false;
 let stopped = false;
@@ -506,11 +510,43 @@ function registerIpc() {
   ipcMain.handle('pet:open-stats', () => { openStatsWindow(); });
   ipcMain.handle('pet:quit', () => { app.quit(); });
 
-  /** 收起信息面板时把窗口一起收短，避免留一大片透明却会吃掉点击的区域 */
-  ipcMain.handle('pet:set-height', (_event, height) => {
-    if (!petWindow) return;
-    const [width] = petWindow.getSize();
-    petWindow.setSize(width, Math.max(110, Math.min(420, Math.round(Number(height) || 0))));
+  /**
+   * 展开/收起信息面板。
+   *
+   * 固定"面板在蛋下方"会在蛋靠近屏幕底部时把面板切掉，所以下方放不下就翻到上方。
+   * 翻转时**必须让蛋停在原地**——把窗口底端对齐到蛋原来的位置，
+   * 否则一展开凤凰就猛地跳一下。
+   */
+  ipcMain.handle('pet:request-layout', (_event, expanded) => {
+    if (!petWindow) return { flipped: false };
+    const bounds = petWindow.getBounds();
+    const workArea = screen.getDisplayMatching(bounds).workArea;
+    const height = expanded ? LAYOUT.expanded : LAYOUT.collapsed;
+
+    // 蛋当前的屏幕纵坐标：不翻转时在窗口顶部，翻转时在窗口底部
+    const phoenixTop = petFlipped
+      ? bounds.y + bounds.height - LAYOUT.edge - LAYOUT.phoenixBand
+      : bounds.y + LAYOUT.edge;
+
+    if (phoenixTop + height <= workArea.y + workArea.height) {
+      petFlipped = false;
+      petWindow.setBounds({
+        x: bounds.x,
+        y: phoenixTop - LAYOUT.edge,
+        width: bounds.width,
+        height,
+      });
+    } else {
+      petFlipped = true;
+      const y = phoenixTop + LAYOUT.edge * 2 + LAYOUT.phoenixBand - height;
+      petWindow.setBounds({
+        x: bounds.x,
+        y: Math.max(workArea.y, y),
+        width: bounds.width,
+        height,
+      });
+    }
+    return { flipped: petFlipped };
   });
 
   ipcMain.on('pet:show-menu', () => {

@@ -60,6 +60,7 @@ html, body {
 .grip:active { cursor: grabbing; }
 
 .phoenix {
+  position: relative;   /* 飘字与光环锚在凤凰上，翻转后自动跟着走 */
   font-size: 60px;
   line-height: 1.1;
   transition: opacity 400ms ease, filter 400ms ease;
@@ -228,10 +229,15 @@ html, body {
   75% { transform: translateX(-3px) rotate(-3deg); }
 }
 
+/* 蛋靠近屏幕底部时，整个面板翻到蛋的上方（主进程决定并告知） */
+#stage.flip { flex-direction: column-reverse; }
+#stage.flip .halo { top: auto; bottom: 2px; }
+#stage.flip .bubble { margin-top: 0; margin-bottom: 6px; }
+
 .float-label {
   position: absolute;
-  top: 34px;
   left: 50%;
+  bottom: 108%;
   z-index: 5;
   padding: 2px 9px;
   border-radius: 999px;
@@ -258,7 +264,7 @@ html, body {
 
 .burst-ring {
   position: absolute;
-  top: 36px;
+  top: 50%;
   left: 50%;
   width: 44px;
   height: 44px;

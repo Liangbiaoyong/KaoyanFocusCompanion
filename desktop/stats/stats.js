@@ -217,7 +217,7 @@ function render({ daily, snapshot }) {
     ['当前连续', `${account?.streak ?? 0} 天`],
     ['最长连续', `${account?.bestStreak ?? 0} 天`],
     ['距今累计走神', `${Object.values(daily).reduce((s, d) => s + (d?.distractions ?? 0), 0)} 次`],
-    ['距考试', `${mountain?.daysLeft ?? '—'} 天`],
+    ['距' + (snapshot?.settings?.targetLabel ?? '考试'), `${mountain?.daysLeft ?? '—'} 天`],
     [
       (mountain?.deltaHours ?? 0) >= 0 ? '进度领先' : '进度欠账',
       `${Math.abs(mountain?.deltaHours ?? 0).toFixed(1)} 小时`,

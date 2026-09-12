@@ -78,6 +78,7 @@ function fill() {
   $('awayPenaltyMinutes').value = Math.round((settings.awayPenaltyMs ?? 0) / 60000);
   $('awayPenaltyWindowMinutes').value = Math.round((settings.awayPenaltyWindowMs ?? 0) / 60000);
   $('examDate').value = dayKey(settings.examDateMs);
+  $('targetLabel').value = settings.targetLabel ?? '考试';
   $('dailyGoalMinutes').value = Math.round(settings.dailyGoalMs / 60000);
   $('dailyCapMinutes').value = Math.round(settings.dailyCapMs / 60000);
   $('companionName').value = settings.companionName;
@@ -107,6 +108,7 @@ async function save() {
     awayPenaltyMinutes: Number($('awayPenaltyMinutes').value),
     awayPenaltyWindowMinutes: Number($('awayPenaltyWindowMinutes').value),
     companionName: $('companionName').value.trim(),
+    targetLabel: $('targetLabel').value.trim() || '考试',
   };
   rules.mode = $('mode').value;
   rules.exactMode = $('exactMode').checked;

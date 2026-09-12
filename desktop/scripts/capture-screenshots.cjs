@@ -21,10 +21,17 @@ const GROUPS = [
     shots: [
       { name: 'pet', ready: 900 },
       {
+        name: 'pet-flipped',
+        ready: 600,
+        inject: `${DESKTOP_BG}
+          document.getElementById('stage').classList.add('flip');`,
+      },
+      {
         name: 'pet-collapsed',
         height: 140,
         ready: 600,
         inject: `${DESKTOP_BG}
+          document.getElementById('stage').classList.remove('flip');
           document.getElementById('bubble').hidden = true;
           document.getElementById('mini').hidden = false;
           document.getElementById('collapse').textContent = '▸';`,

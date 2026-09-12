@@ -34,8 +34,6 @@ const MINI_VIEW = {
   IDLE: { dot: 'off', text: '未开始' },
 };
 
-const HEIGHT = { expanded: 252, collapsed: 140 };
-
 // 每种事件配一个动作，让反馈在事件那一秒就发生
 const REACTION_ANIM = {
   away: 'recoil',
@@ -73,11 +71,13 @@ function setMini(dot, text, timeText) {
   if (timeText !== undefined) $('miniTime').textContent = timeText;
 }
 
-function applyLayout() {
+async function applyLayout() {
   const collapsed = $('bubble').hidden;
   $('mini').hidden = !collapsed;
   $('collapse').textContent = collapsed ? '▸' : '▾';
-  window.pet.setHeight(collapsed ? HEIGHT.collapsed : HEIGHT.expanded);
+  // 主进程按屏幕剩余空间决定面板在蛋的下方还是上方
+  const result = await window.pet.requestLayout(!collapsed);
+  $('stage').classList.toggle('flip', result?.flipped === true);
 }
 
 function render(snapshot) {
@@ -114,8 +114,9 @@ function render(snapshot) {
 
   $('markTime').style.left = `${Math.round(mountain.pTime * 100)}%`;
   $('markYou').style.left = `${Math.round(mountain.pYou * 100)}%`;
+  const target = settings.targetLabel ?? '考试';
   $('altitude').textContent =
-    `海拔 ${Math.round(mountain.pYou * 100)}% · ${deltaText(mountain.deltaHours)} · 距考试 ${mountain.daysLeft} 天`;
+    `海拔 ${Math.round(mountain.pYou * 100)}% · ${deltaText(mountain.deltaHours)} · 距${target} ${mountain.daysLeft} 天`;
 
   const mini = MINI_VIEW[session.status] ?? { dot: 'off', text: session.status };
   setMini(mini.dot, mini.text, clock);
@@ -129,7 +130,6 @@ window.pet.getSnapshot().then(render);
  * 只扣成长值是"安静"的惩罚——感觉不到，就改不掉。
  */
 function react(event) {
-  const stage = $('stage');
   const phoenix = $('phoenix');
   const tone = reactionTone(event);
 
@@ -146,14 +146,14 @@ function react(event) {
     const el = document.createElement('div');
     el.className = `float-label ${tone}`;
     el.textContent = label;
-    stage.append(el);
+    phoenix.append(el); // 锚在凤凰上，面板翻转后也跟着走
     setTimeout(() => el.remove(), 1600);
   }
 
   if (tone === 'good' || event.kind === 'timeout') {
     const ring = document.createElement('div');
     ring.className = `burst-ring ${tone}`;
-    stage.append(ring);
+    phoenix.append(ring);
     setTimeout(() => ring.remove(), 1000);
   }
 

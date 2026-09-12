@@ -86,6 +86,7 @@ const settings = {
   watchdogMs: 10 * MIN,
   awayPenaltyMs: MIN,
   awayPenaltyWindowMs: 3 * MIN,
+  targetLabel: '考研初试',
   companionName: '小凤',
 };
 
@@ -135,7 +136,7 @@ contextBridge.exposeInMainWorld('pet', {
   togglePause: async () => ({ paused: false }),
   openSettings: async () => {},
   quit: async () => {},
-  setHeight: async () => {},
+  requestLayout: async () => ({ flipped: false }),
   showMenu: () => {},
 });
 
@@ -148,6 +149,7 @@ const config = {
     watchdogMinutes: 10,
     awayPenaltyMinutes: 1,
     awayPenaltyWindowMinutes: 3,
+    targetLabel: '考研初试',
     companionName: '小凤',
   },
   rules,

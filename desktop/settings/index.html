@@ -82,7 +82,12 @@
 
     <section class="card">
       <h2>目标</h2>
-      <label>考试日期 <input type="date" id="examDate" /></label>
+      <p class="hint">
+        目标就是"一件有截止日的事"，不一定是考研——期末考、项目截止、任何你希望在此之前
+        持续投入的事情都行。名称会显示在桌宠上（如「距考研初试 99 天」）。
+      </p>
+      <label>目标名称 <input type="text" id="targetLabel" maxlength="8" placeholder="考试" /></label>
+      <label>目标日期 <input type="date" id="examDate" /></label>
       <label>每日目标（分钟） <input type="number" id="dailyGoalMinutes" min="1" max="1440" /></label>
       <label>每日计入上限（分钟） <input type="number" id="dailyCapMinutes" min="1" max="1440" /></label>
       <label>凤凰名字 <input type="text" id="companionName" maxlength="12" /></label>
