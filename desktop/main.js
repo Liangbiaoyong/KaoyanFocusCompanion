@@ -94,6 +94,7 @@ let createProbe = null;
 let mergeSample = null;
 let toEngineInput = null;
 let pushRecentTitle = null;
+let buildRules = null;
 let DEFAULT_RULES = null;
 
 async function loadModules() {
@@ -111,24 +112,8 @@ async function loadModules() {
   ({ createFileArea } = await own('file-store.mjs'));
   ({ createProbe, mergeSample } = await own('probe.mjs'));
   ({ toEngineInput, pushRecentTitle } = await own('detect.mjs'));
+  ({ buildRules } = await own('self.mjs'));
   ({ DEFAULT_RULES } = await own('rules.mjs'));
-}
-
-/**
- * 组装判定规则。
- * 关键：把自己真实的进程名并进 selfProcesses——开发态是 electron.exe，
- * 打包后是 KaoyanFocusCompanion.exe，写死名单必然漏掉一个，
- * 漏掉的后果就是"点一下桌宠自己就打断计时"。
- */
-function selfProcessName() {
-  return path.basename(process.execPath).toLowerCase();
-}
-
-function buildRules(rawRules, watchdogMs) {
-  const merged = { ...DEFAULT_RULES, ...(rawRules ?? {}) };
-  merged.selfProcesses = [...new Set([...(merged.selfProcesses ?? []), selfProcessName()])];
-  if (watchdogMs) merged.watchdogMs = watchdogMs;
-  return merged;
 }
 
 // —— 窗口 ——
@@ -415,7 +400,8 @@ async function start() {
 
   const isFirstRun = !rawData.settings;
   settings = normalizeSettings(rawData.settings, now);
-  rules = buildRules(rawData.rules, settings.watchdogMs);
+  rules = buildRules(DEFAULT_RULES, rawData.rules, settings.watchdogMs, process.execPath);
+  log('自身进程名:', path.basename(process.execPath), '| selfProcesses:', rules.selfProcesses.join(','));
   flags = { lastStageIndex: null, metGoalDate: null, ...(rawData.flags ?? {}) };
   daily = rawData.daily ?? {};
   petBounds = rawData.petBounds ?? null;
@@ -480,7 +466,7 @@ function registerIpc() {
 
   ipcMain.handle('settings:save', async (_event, payload) => {
     settings = normalizeSettings(payload.settings, Date.now());
-    rules = buildRules(payload.rules, settings.watchdogMs);
+    rules = buildRules(DEFAULT_RULES, payload.rules, settings.watchdogMs, process.execPath);
     rawData.settings = payload.settings;
     await store.saveSettings(payload.settings);
     await store.set('rules', rules);
