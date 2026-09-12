@@ -10,6 +10,7 @@ export function defaultSettings(now) {
     dailyGoalMinutes: 300,
     dailyCapMinutes: 480,
     watchdogMinutes: 10,
+    awayPenaltyMinutes: 1,
     companionName: '小凤',
   };
 }
@@ -26,6 +27,7 @@ export function normalizeSettings(raw, now) {
     dailyGoalMs: (r.dailyGoalMinutes ?? d.dailyGoalMinutes) * MINUTE,
     dailyCapMs: (r.dailyCapMinutes ?? d.dailyCapMinutes) * MINUTE,
     watchdogMs: (r.watchdogMinutes ?? d.watchdogMinutes) * MINUTE,
+    awayPenaltyMs: Math.max(0, (r.awayPenaltyMinutes ?? d.awayPenaltyMinutes)) * MINUTE,
     companionName: name,
   };
 }

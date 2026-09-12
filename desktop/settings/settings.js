@@ -75,6 +75,7 @@ function fill() {
   $('mode').value = rules.mode;
   $('exactMode').checked = rules.exactMode === true;
   $('watchdogMinutes').value = Math.round(settings.watchdogMs / 60000);
+  $('awayPenaltyMinutes').value = Math.round((settings.awayPenaltyMs ?? 0) / 60000);
   $('examDate').value = dayKey(settings.examDateMs);
   $('dailyGoalMinutes').value = Math.round(settings.dailyGoalMs / 60000);
   $('dailyCapMinutes').value = Math.round(settings.dailyCapMs / 60000);
@@ -102,6 +103,7 @@ async function save() {
     dailyGoalMinutes: Number($('dailyGoalMinutes').value),
     dailyCapMinutes: Number($('dailyCapMinutes').value),
     watchdogMinutes: Number($('watchdogMinutes').value),
+    awayPenaltyMinutes: Number($('awayPenaltyMinutes').value),
     companionName: $('companionName').value.trim(),
   };
   rules.mode = $('mode').value;

@@ -47,6 +47,10 @@ export function step(session, input) {
   // 超时后必须等到有新的活动（idle 解除）才可能恢复专注
   if (target === STATUS.FOCUSING && idle) target = STATUS.WAITING_ACTIVITY;
 
+  // 从专注切走本身就是一次"分心"的信号，扣一笔小分。
+  // 超时那条已经扣过 10 分钟，不在这里叠加，否则同一动作被罚两次。
+  const awayPenalties = wasFocusing && target !== STATUS.FOCUSING && penalties === 0 ? 1 : 0;
+
   const distractions =
     target === STATUS.PAUSED_DISTRACTED && s.status !== STATUS.PAUSED_DISTRACTED ? 1 : 0;
 
@@ -58,5 +62,5 @@ export function step(session, input) {
   }
   s.status = target;
 
-  return { session: s, focusMs, fromMs, toMs: now, penalties, distractions };
+  return { session: s, focusMs, fromMs, toMs: now, penalties, awayPenalties, distractions };
 }

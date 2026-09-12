@@ -119,6 +119,12 @@ export function applyStep(account, daily, result, settings) {
     a.spirit = Math.max(0, a.spirit - result.penalties * SPIRIT_PENALTY);
   }
 
+  // 切走的小额惩罚，额度可配（0 即关闭）
+  if (result.awayPenalties > 0) {
+    const awayMs = Math.max(0, settings.awayPenaltyMs ?? 0);
+    a.growthMs = Math.max(0, a.growthMs - result.awayPenalties * awayMs);
+  }
+
   a.todayFocusMs = d[a.todayDate]?.focusMs ?? 0;
   return { account: a, daily: d };
 }

@@ -15,7 +15,11 @@ const settings = {
 
 /** 造一个从 fromMs 起、持续 ms 毫秒的专注 step 结果 */
 function focusResult(fromMs, ms, extra = {}) {
-  return { focusMs: ms, fromMs, toMs: fromMs + ms, penalties: 0, distractions: 0, ...extra };
+  return {
+    focusMs: ms, fromMs, toMs: fromMs + ms,
+    penalties: 0, awayPenalties: 0, distractions: 0,
+    ...extra,
+  };
 }
 
 describe('createAccount', () => {
@@ -189,6 +193,76 @@ describe('applyStep — 惩罚', () => {
     const t = at(2026, 9, 12, 10);
     const { account } = applyStep(a, {}, focusResult(t, 0, { penalties: 1 }), settings);
     expect(account.growthMs).toBe(5 * HOUR - PENALTY_MS);
+  });
+});
+
+describe('applyStep — 切走惩罚额度可配', () => {
+  const withAway = (minutes) => ({ ...settings, awayPenaltyMs: minutes * MIN });
+
+  it('默认扣 1 分钟', () => {
+    const a = createAccount('2026-09-12');
+    a.growthMs = 10 * MIN;
+    const t = at(2026, 9, 12, 10);
+    const { account } = applyStep(a, {}, focusResult(t, 0, { awayPenalties: 1 }), withAway(1));
+    expect(account.growthMs).toBe(9 * MIN);
+  });
+
+  it('额度可改成 3 分钟', () => {
+    const a = createAccount('2026-09-12');
+    a.growthMs = 10 * MIN;
+    const t = at(2026, 9, 12, 10);
+    const { account } = applyStep(a, {}, focusResult(t, 0, { awayPenalties: 1 }), withAway(3));
+    expect(account.growthMs).toBe(7 * MIN);
+  });
+
+  it('额度为 0 等于关闭', () => {
+    const a = createAccount('2026-09-12');
+    a.growthMs = 10 * MIN;
+    const t = at(2026, 9, 12, 10);
+    const { account } = applyStep(a, {}, focusResult(t, 0, { awayPenalties: 2 }), withAway(0));
+    expect(account.growthMs).toBe(10 * MIN);
+  });
+
+  it('下限为 0，不会变负', () => {
+    const a = createAccount('2026-09-12');
+    a.growthMs = 30 * 1000;
+    const t = at(2026, 9, 12, 10);
+    const { account } = applyStep(a, {}, focusResult(t, 0, { awayPenalties: 1 }), withAway(5));
+    expect(account.growthMs).toBe(0);
+  });
+
+  it('不削减累计专注', () => {
+    const a = createAccount('2026-09-12');
+    a.lifetimeFocusMs = 50 * HOUR;
+    a.growthMs = 10 * MIN;
+    const t = at(2026, 9, 12, 10);
+    const { account } = applyStep(a, {}, focusResult(t, 0, { awayPenalties: 1 }), withAway(1));
+    expect(account.lifetimeFocusMs).toBe(50 * HOUR);
+  });
+
+  it('旧数据没有 awayPenaltyMs 字段时不报错也不扣分', () => {
+    const a = createAccount('2026-09-12');
+    a.growthMs = 10 * MIN;
+    const t = at(2026, 9, 12, 10);
+    const { account } = applyStep(a, {}, focusResult(t, 0, { awayPenalties: 1 }), settings);
+    expect(account.growthMs).toBe(10 * MIN);
+  });
+
+  it('两次切走扣两次', () => {
+    const a = createAccount('2026-09-12');
+    a.growthMs = 10 * MIN;
+    const t = at(2026, 9, 12, 10);
+    const { account } = applyStep(a, {}, focusResult(t, 0, { awayPenalties: 2 }), withAway(1));
+    expect(account.growthMs).toBe(8 * MIN);
+  });
+
+  it('切走不扣精神值（与超时惩罚区分）', () => {
+    const a = createAccount('2026-09-12');
+    a.growthMs = 10 * MIN;
+    a.spirit = 50;
+    const t = at(2026, 9, 12, 10);
+    const { account } = applyStep(a, {}, focusResult(t, 0, { awayPenalties: 1 }), withAway(1));
+    expect(account.spirit).toBe(50);
   });
 });
 

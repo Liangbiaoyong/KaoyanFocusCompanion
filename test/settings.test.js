@@ -53,3 +53,22 @@ describe('normalizeSettings', () => {
     expect(normalizeSettings({ companionName: '' }, NOW).companionName).toBe('小凤');
   });
 });
+
+describe('切走惩罚额度', () => {
+  it('默认 1 分钟', () => {
+    expect(defaultSettings(NOW).awayPenaltyMinutes).toBe(1);
+    expect(normalizeSettings({}, NOW).awayPenaltyMs).toBe(MINUTE);
+  });
+
+  it('可配置', () => {
+    expect(normalizeSettings({ awayPenaltyMinutes: 5 }, NOW).awayPenaltyMs).toBe(5 * MINUTE);
+  });
+
+  it('0 表示关闭', () => {
+    expect(normalizeSettings({ awayPenaltyMinutes: 0 }, NOW).awayPenaltyMs).toBe(0);
+  });
+
+  it('负数归零', () => {
+    expect(normalizeSettings({ awayPenaltyMinutes: -3 }, NOW).awayPenaltyMs).toBe(0);
+  });
+});

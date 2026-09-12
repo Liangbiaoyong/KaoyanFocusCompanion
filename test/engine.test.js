@@ -129,6 +129,65 @@ describe('step — 看门狗', () => {
   });
 });
 
+describe('step — 切走惩罚（awayPenalties）', () => {
+  const focusing = () => step(initialSession(T0), base).session;
+
+  it('切到中性站点记一次切走', () => {
+    const r = step(focusing(), { ...base, now: T0 + MIN, classification: 'neutral' });
+    expect(r.awayPenalties).toBe(1);
+    expect(r.session.status).toBe(STATUS.PAUSED_AWAY);
+  });
+
+  it('切到分心站点记一次切走（与走神计数独立）', () => {
+    const r = step(focusing(), { ...base, now: T0 + MIN, classification: 'distract' });
+    expect(r.awayPenalties).toBe(1);
+    expect(r.distractions).toBe(1);
+  });
+
+  it('切到别的程序（失焦）记一次切走', () => {
+    const r = step(focusing(), { ...base, now: T0 + MIN, focused: false });
+    expect(r.awayPenalties).toBe(1);
+  });
+
+  it('一直专注不记切走', () => {
+    const r = step(focusing(), { ...base, now: T0 + MIN });
+    expect(r.awayPenalties).toBe(0);
+  });
+
+  it('超时不重复记切走——那条已经扣了 10 分钟', () => {
+    const r = step(focusing(), { ...base, now: T0 + MIN, idle: true });
+    expect(r.penalties).toBe(1);
+    expect(r.awayPenalties).toBe(0);
+    expect(r.session.status).toBe(STATUS.WAITING_ACTIVITY);
+  });
+
+  it('从暂停态恢复专注不记切走', () => {
+    const paused = step(focusing(), { ...base, now: T0 + MIN, classification: 'neutral' }).session;
+    const resumed = step(paused, { ...base, now: T0 + 2 * MIN });
+    expect(resumed.awayPenalties).toBe(0);
+    expect(resumed.session.status).toBe(STATUS.FOCUSING);
+  });
+
+  it('本来就处于暂停态不会持续记切走', () => {
+    let s = step(focusing(), { ...base, now: T0 + MIN, classification: 'neutral' }).session;
+    const second = step(s, { ...base, now: T0 + 2 * MIN, classification: 'neutral' });
+    const third = step(second.session, { ...base, now: T0 + 3 * MIN, classification: 'neutral' });
+    expect(second.awayPenalties).toBe(0);
+    expect(third.awayPenalties).toBe(0);
+  });
+
+  it('从未开始学习就切窗口不算切走', () => {
+    const r = step(initialSession(T0), { ...base, now: T0 + MIN, focused: false });
+    expect(r.awayPenalties).toBe(0);
+  });
+
+  it('学习外名单下失焦只记一次，不叠加', () => {
+    const r = step(focusing(), { ...base, now: T0 + MIN, focused: false, classification: 'distract' });
+    expect(r.awayPenalties).toBe(1);
+    expect(r.distractions).toBe(0);
+  });
+});
+
 describe('step — 不变量', () => {
   it('focusMs 非零时必等于区间长度', () => {
     const focusing = step(initialSession(T0), base).session;
