@@ -2170,7 +2170,7 @@ async function readInput(settings, now) {
     focused = win?.focused === true && win?.state !== 'minimized';
   } catch { /* 无窗口 */ }
 
-  let idle = true;
+  let idle = false;
   try {
     const seconds = Math.max(15, Math.round(settings.watchdogMs / 1000));
     idle = (await chrome.idle.queryState(seconds)) !== 'active';
