@@ -8,7 +8,19 @@
   <body>
     <div id="stage">
       <div class="halo"></div>
-      <div id="phoenix" class="phoenix" data-mood="dozing" data-paused="false">&#129370;</div>
+
+      <!-- 拖拽把手：整块凤凰区域。这里不绑任何鼠标事件——
+           因为 -webkit-app-region: drag 会吞掉事件，这是它和点击互斥的根源。 -->
+      <div id="grip" class="grip">
+        <div id="phoenix" class="phoenix" data-mood="dozing" data-paused="false">&#129370;</div>
+      </div>
+
+      <!-- 可点区域：和拖拽把手分开，事件才能正常到达 -->
+      <div class="tools">
+        <button id="collapse" class="tool" title="收起 / 展开信息">&#9662;</button>
+        <button id="menu" class="tool" title="菜单">&#8943;</button>
+      </div>
+
       <div id="bubble" class="bubble">
         <div class="row">
           <span id="time" class="time">00:00:00</span>

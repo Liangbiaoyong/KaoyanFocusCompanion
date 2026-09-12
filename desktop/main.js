@@ -24,6 +24,24 @@ function saveJson(filePath, data) {
 /** 动态加载 ESM 模块。主进程是 CJS，必须转成 file URL 才能 import。 */
 const load = (filePath) => import(pathToFileURL(filePath).href);
 
+/**
+ * Windows 上 Electron 的主进程 stdout 不会进父进程终端，
+ * 所以错误必须自己落盘，否则只能靠猜。
+ */
+let logFile = null;
+function log(...args) {
+  const line = `[${new Date().toISOString()}] ${args.map((a) => (a instanceof Error ? a.stack : String(a))).join(' ')}\n`;
+  try {
+    if (logFile) {
+      fs.mkdirSync(path.dirname(logFile), { recursive: true });
+      fs.appendFileSync(logFile, line);
+    }
+  } catch {
+    /* 日志写不了也不能影响运行 */
+  }
+  console.log(...args);
+}
+
 const ROOT = path.join(__dirname, '..');
 
 let petWindow = null;
@@ -42,6 +60,7 @@ let rules = null;
 let recentWindows = [];
 let lastSample = null;
 let pendingUrl = null;
+let sawFirstSample = false;
 let store = null;
 
 let createStore = null;
@@ -182,6 +201,10 @@ async function onSample(rawSample) {
   if (disposed || paused || busy) return;
   busy = true;
   try {
+    if (!sawFirstSample) {
+      sawFirstSample = true;
+      log('收到第一个探针样本:', JSON.stringify(rawSample));
+    }
     const sample = mergeSample(lastSample, {
       ...rawSample,
       url: rules.exactMode ? pendingUrl : null,
@@ -203,7 +226,7 @@ async function onSample(rawSample) {
     await store.saveDaily(daily);
     broadcastSnapshot();
   } catch (error) {
-    console.error('[桌宠] 计时循环出错：', error);
+    log('计时循环出错:', error);
   } finally {
     busy = false;
   }
@@ -213,15 +236,18 @@ async function onSample(rawSample) {
 
 async function start() {
   await loadModules();
+  log('模块加载完成');
 
   const file = dataFilePath(app.getPath('userData'));
+  logFile = path.join(app.getPath('userData'), 'kaoyan-focus.log');
   const raw = loadJson(file);
   const now = Date.now();
+  log('数据文件:', file, '| 已有键:', Object.keys(raw).join(',') || '(空)');
 
   store = createStore(createFileArea({
     load: () => raw,
     save: (data) => saveJson(file, data),
-    onError: (error) => console.error('[桌宠] 落盘失败：', error.message),
+    onError: (error) => log('落盘失败:', error),
   }));
 
   settings = normalizeSettings(raw.settings, now);
@@ -235,8 +261,10 @@ async function start() {
   account = state.account;
 
   createPetWindow(raw.petBounds ?? null);
+  log('桌宠窗口已创建');
   startBaseProbe();
   refreshUrlProbe();
+  log('探针已启动');
   broadcastSnapshot();
 }
 
@@ -293,7 +321,7 @@ ipcMain.handle('settings:close', () => {
 // —— 生命周期 ——
 
 app.whenReady().then(start).catch((error) => {
-  console.error('[桌宠] 启动失败：', error);
+  log('启动失败:', error);
   app.quit();
 });
 

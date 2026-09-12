@@ -40,14 +40,15 @@ function deltaText(hours) {
 }
 
 function render(snapshot) {
-  if (!snapshot) return;
+  if (!snapshot) {
+    $('state').textContent = '还没收到数据';
+    return;
+  }
 
   const phoenix = $('phoenix');
-  const bubble = $('bubble');
-
   if (snapshot.paused) {
     phoenix.dataset.paused = 'true';
-    $('state').textContent = '已暂停（右键可继续）';
+    $('state').textContent = '已暂停（点 ⋯ 继续）';
     return;
   }
   phoenix.dataset.paused = 'false';
@@ -75,12 +76,13 @@ function render(snapshot) {
 window.pet.onSnapshot(render);
 window.pet.getSnapshot().then(render);
 
-$('phoenix').addEventListener('dblclick', () => {
+// 折叠开关放在 tools 里（no-drag），不放拖拽区——拖拽区收不到点击
+$('collapse').addEventListener('click', () => {
   const bubble = $('bubble');
   bubble.hidden = !bubble.hidden;
+  $('collapse').textContent = bubble.hidden ? '▸' : '▾';
 });
 
-document.addEventListener('contextmenu', (event) => {
-  event.preventDefault();
+$('menu').addEventListener('click', () => {
   window.pet.showMenu();
 });
