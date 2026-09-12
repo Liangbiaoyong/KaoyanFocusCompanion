@@ -1,7 +1,54 @@
 import { dayKey } from '../../src/core/time.js';
+import { segmentBars, formatSegment } from '../src/segments.mjs';
 
 const $ = (id) => document.getElementById(id);
 const DAYS = 30;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** 今天的 24 小时时间轴：几点在学，一眼看出来 */
+function renderToday(daily) {
+  const now = Date.now();
+  const dayStart = new Date(now).setHours(0, 0, 0, 0);
+  const bars = segmentBars(daily[dayKey(now)]?.segments, dayStart, DAY_MS);
+
+  const track = $('tlTrack');
+  track.textContent = '';
+  for (const bar of bars) {
+    const block = document.createElement('div');
+    block.className = 'tl-block';
+    block.style.left = `${bar.left * 100}%`;
+    block.style.width = `${Math.max(0.4, bar.width * 100)}%`;
+    block.title = formatSegment(bar);
+    track.append(block);
+  }
+
+  const nowMark = $('tlNow');
+  nowMark.hidden = false;
+  nowMark.style.left = `${((now - dayStart) / DAY_MS) * 100}%`;
+
+  const list = $('tlList');
+  list.textContent = '';
+  if (bars.length === 0) {
+    const li = document.createElement('li');
+    const span = document.createElement('span');
+    span.textContent = '今天还没有专注记录';
+    li.append(span);
+    list.append(li);
+  } else {
+    for (const bar of bars) {
+      const li = document.createElement('li');
+      const a = document.createElement('span');
+      a.textContent = formatSegment(bar);
+      li.append(a);
+      list.append(li);
+    }
+  }
+
+  const minutes = bars.reduce((sum, bar) => sum + (bar.end - bar.start), 0) / 60000;
+  $('tlHint').textContent = bars.length === 0
+    ? '专注开始后，这里会画出时间段'
+    : `今天专注 ${bars.length} 段，合计 ${Math.round(minutes)} 分钟（${(minutes / 60).toFixed(1)} 小时）`;
+}
 
 function lastNDays(now, count) {
   const out = [];
@@ -23,6 +70,7 @@ function renderEmptyList(list, text) {
 
 function render({ daily, snapshot }) {
   const now = Date.now();
+  renderToday(daily ?? {});
   const days = lastNDays(now, DAYS);
   const goalMs = snapshot?.settings?.dailyGoalMs ?? 0;
 

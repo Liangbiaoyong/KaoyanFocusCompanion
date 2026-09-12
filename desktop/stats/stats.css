@@ -29,6 +29,35 @@ h2 { font-size: 13px; font-weight: 600; margin: 0 0 12px; }
   margin-bottom: 14px;
 }
 
+.timeline { position: relative; height: 24px; }
+.tl-track {
+  position: absolute;
+  inset: 0;
+  background: var(--track);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.tl-block {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--accent);
+}
+.tl-now {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 1px;
+  background: #c0392b;
+}
+.tl-scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--dim);
+  margin-top: 3px;
+}
+
 .bars {
   display: flex;
   align-items: flex-end;

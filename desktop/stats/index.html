@@ -9,6 +9,19 @@
     <h1>统计</h1>
 
     <section class="card">
+      <h2>今天</h2>
+      <div class="timeline">
+        <div class="tl-track" id="tlTrack"></div>
+        <div class="tl-now" id="tlNow" hidden></div>
+      </div>
+      <div class="tl-scale">
+        <span>0</span><span>6</span><span>12</span><span>18</span><span>24</span>
+      </div>
+      <p class="hint" id="tlHint"></p>
+      <ul id="tlList" class="list"></ul>
+    </section>
+
+    <section class="card">
       <h2>最近 30 天</h2>
       <div id="bars" class="bars"></div>
       <p class="hint" id="barsHint"></p>

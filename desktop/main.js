@@ -95,6 +95,8 @@ let mergeSample = null;
 let toEngineInput = null;
 let pushRecentTitle = null;
 let buildRules = null;
+let addSegment = null;
+let recordSegments = null;
 let DEFAULT_RULES = null;
 
 async function loadModules() {
@@ -113,6 +115,7 @@ async function loadModules() {
   ({ createProbe, mergeSample } = await own('probe.mjs'));
   ({ toEngineInput, pushRecentTitle } = await own('detect.mjs'));
   ({ buildRules } = await own('self.mjs'));
+  ({ addSegment, recordSegments } = await own('segments.mjs'));
   ({ DEFAULT_RULES } = await own('rules.mjs'));
 }
 
@@ -368,6 +371,7 @@ async function onSample(rawSample) {
     session = result.session;
     account = next.account;
     daily = next.daily;
+    if (result.focusMs > 0) recordSegments(daily, result.fromMs, result.toMs);
 
     await store.saveState({ session, account });
     await store.saveDaily(daily);
