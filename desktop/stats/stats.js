@@ -1,4 +1,4 @@
-import { dayKey } from '../../src/core/time.js';
+import { dayKey, parseDayKey } from '../../src/core/time.js';
 import { segmentBars, formatSegment, hourlyHistogram, peakBucket } from '../src/segments.mjs';
 
 const $ = (id) => document.getElementById(id);
@@ -50,6 +50,58 @@ function renderToday(daily) {
     : `今天专注 ${bars.length} 段，合计 ${Math.round(minutes)} 分钟（${(minutes / 60).toFixed(1)} 小时）`;
 }
 
+/** 最近 7 天并排：单看一天看不出作息规律，一周并排才能看出哪天在划水 */
+function renderWeek(daily, days) {
+  const wrap = $('week');
+  wrap.textContent = '';
+  const today = dayKey(Date.now());
+  const last7 = days.slice(-7);
+
+  let activeDays = 0;
+  let bestMs = 0;
+  let bestDay = null;
+
+  for (const day of last7) {
+    const record = daily[day];
+    const totalMs = record?.focusMs ?? 0;
+    if (totalMs > 0) activeDays += 1;
+    if (totalMs > bestMs) {
+      bestMs = totalMs;
+      bestDay = day;
+    }
+
+    const row = document.createElement('div');
+    row.className = 'wk-row';
+    if (day === today) row.classList.add('today');
+
+    const label = document.createElement('span');
+    label.className = 'wk-label';
+    label.textContent = day.slice(5);
+
+    const track = document.createElement('div');
+    track.className = 'wk-track';
+    for (const bar of segmentBars(record?.segments, parseDayKey(day), DAY_MS)) {
+      const block = document.createElement('div');
+      block.className = 'wk-block';
+      block.style.left = `${bar.left * 100}%`;
+      block.style.width = `${Math.max(0.5, bar.width * 100)}%`;
+      block.title = formatSegment(bar);
+      track.append(block);
+    }
+
+    const total = document.createElement('span');
+    total.className = 'wk-total';
+    total.textContent = `${(totalMs / 3600000).toFixed(1)}h`;
+
+    row.append(label, track, total);
+    wrap.append(row);
+  }
+
+  $('weekHint').textContent = bestDay
+    ? `最近 7 天有 ${activeDays} 天在学习，最久是 ${bestDay.slice(5)}（${(bestMs / 3600000).toFixed(1)} 小时）。`
+    : '最近 7 天还没有专注记录。';
+}
+
 /** 走神热点：知道"今天走神 5 次"没用，知道"每天下午三点必走神"才能改 */
 function renderHours(daily, days) {
   const times = days.flatMap((day) => daily[day]?.distractionTimes ?? []);
@@ -97,6 +149,7 @@ function render({ daily, snapshot }) {
   const now = Date.now();
   renderToday(daily ?? {});
   const days = lastNDays(now, DAYS);
+  renderWeek(daily ?? {}, days);
   renderHours(daily ?? {}, days);
   const goalMs = snapshot?.settings?.dailyGoalMs ?? 0;
 

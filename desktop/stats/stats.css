@@ -29,6 +29,31 @@ h2 { font-size: 13px; font-weight: 600; margin: 0 0 12px; }
   margin-bottom: 14px;
 }
 
+.week { display: grid; gap: 4px; }
+.wk-row {
+  display: grid;
+  grid-template-columns: 42px 1fr 42px;
+  align-items: center;
+  gap: 8px;
+}
+.wk-label,
+.wk-total { font-size: 10px; color: var(--dim); }
+.wk-total { text-align: right; font-variant-numeric: tabular-nums; }
+.wk-track {
+  position: relative;
+  height: 12px;
+  background: var(--track);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.wk-block {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--accent);
+}
+.wk-row.today .wk-label { color: var(--accent); font-weight: 600; }
+
 .hours {
   display: flex;
   align-items: flex-end;
