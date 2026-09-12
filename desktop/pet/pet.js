@@ -41,6 +41,7 @@ const REACTION_ANIM = {
   away: 'recoil',
   timeout: 'recoil',
   degrade: 'recoil',
+  awayThrottled: 'shake',
   distract: 'shake',
   resume: 'perk',
   evolve: 'perk',

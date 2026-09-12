@@ -114,15 +114,28 @@ export function applyStep(account, daily, result, settings) {
     a.spirit = Math.max(0, a.spirit - result.distractions * SPIRIT_DISTRACTION);
   }
 
+  /**
+   * 扣时间必须同时打在"今日计时"和"成长值"上。
+   * 只扣成长值的话，使用者盯着的那行大字（今日计时）纹丝不动，
+   * 感觉就像什么都没发生——惩罚也就失去了意义。
+   * 另外单独累计 penaltyMs，供统计页解释"为什么总时长比活动时段少"。
+   */
+  const subtractTime = (ms) => {
+    if (!(ms > 0)) return;
+    a.growthMs = Math.max(0, a.growthMs - ms);
+    const record = d[today] ?? (d[today] = emptyDay());
+    record.focusMs = Math.max(0, (record.focusMs ?? 0) - ms);
+    record.penaltyMs = (record.penaltyMs ?? 0) + ms;
+  };
+
   if (result.penalties > 0) {
-    a.growthMs = Math.max(0, a.growthMs - result.penalties * PENALTY_MS);
+    subtractTime(result.penalties * PENALTY_MS);
     a.spirit = Math.max(0, a.spirit - result.penalties * SPIRIT_PENALTY);
   }
 
   // 切走的小额惩罚，额度可配（0 即关闭）
   if (result.awayPenalties > 0) {
-    const awayMs = Math.max(0, settings.awayPenaltyMs ?? 0);
-    a.growthMs = Math.max(0, a.growthMs - result.awayPenalties * awayMs);
+    subtractTime(result.awayPenalties * Math.max(0, settings.awayPenaltyMs ?? 0));
   }
 
   a.todayFocusMs = d[a.todayDate]?.focusMs ?? 0;

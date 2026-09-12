@@ -22,9 +22,13 @@
       <label>每次切走扣几分钟
         <input type="number" id="awayPenaltyMinutes" min="0" max="60" />
       </label>
+      <label>两次扣分至少间隔（分钟）
+        <input type="number" id="awayPenaltyWindowMinutes" min="0" max="60" />
+      </label>
       <p class="hint">
-        「切走」指从专注状态切到别的程序或学习外网站，每切走一次扣这么多成长值，填 0 即关闭。
-        发呆超时是另一条规则（固定扣 10 分钟），不与此叠加。
+        「切走」指从专注状态切到别的程序或学习外网站，每切走一次<strong>从今日计时和成长值里一起扣</strong>
+        这么多，填 0 即关闭。为避免反复切窗口被连罚，两次扣分之间至少间隔上面这个时间
+        （窗口内再切走只提醒、不扣分）。发呆超时是另一条规则（固定扣 10 分钟），不与此叠加。
       </p>
 
       <label class="check">

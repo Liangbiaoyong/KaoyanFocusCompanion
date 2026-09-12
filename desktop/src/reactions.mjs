@@ -10,6 +10,7 @@
 const KIND = Object.freeze({
   TIMEOUT: 'timeout',
   AWAY: 'away',
+  AWAY_THROTTLED: 'awayThrottled',
   DISTRACT: 'distract',
   RESUME: 'resume',
   EVOLVE: 'evolve',
@@ -37,6 +38,10 @@ export function deriveReactions(before, after, result, settings) {
       kind: KIND.AWAY,
       penaltyMinutes: Math.round((settings?.awayPenaltyMs ?? 0) / 60000),
     });
+  } else if (result.awayPenaltyThrottled) {
+    // 节流窗口内不再扣分。仍然提醒一句，但**不能**声称扣了分钟数——
+    // 那是骗人，下次你就不会信这个提示了。
+    events.push({ kind: KIND.AWAY_THROTTLED });
   }
 
   if (result.distractions > 0) {
@@ -65,6 +70,7 @@ export function reactionLabel(event) {
   switch (event.kind) {
     case KIND.TIMEOUT: return '发呆超时 · 扣 10 分钟';
     case KIND.AWAY: return `切走了 · 扣 ${event.penaltyMinutes} 分钟`;
+    case KIND.AWAY_THROTTLED: return '又切走了';
     case KIND.DISTRACT: return '走神 +1';
     case KIND.RESUME: return '回来了';
     case KIND.EVOLVE: return `进化 · ${event.stageName}`;
@@ -81,6 +87,7 @@ export function reactionTone(event) {
     case KIND.DEGRADE: return 'bad';
     case KIND.AWAY:
     case KIND.DISTRACT: return 'warn';
+    case KIND.AWAY_THROTTLED: return 'neutral';
     case KIND.RESUME:
     case KIND.EVOLVE:
     case KIND.GOAL: return 'good';

@@ -72,3 +72,22 @@ describe('切走惩罚额度', () => {
     expect(normalizeSettings({ awayPenaltyMinutes: -3 }, NOW).awayPenaltyMs).toBe(0);
   });
 });
+
+describe('切走惩罚的节流窗口', () => {
+  it('默认 3 分钟', () => {
+    expect(defaultSettings(NOW).awayPenaltyWindowMinutes).toBe(3);
+    expect(normalizeSettings({}, NOW).awayPenaltyWindowMs).toBe(3 * MINUTE);
+  });
+
+  it('可配置', () => {
+    expect(normalizeSettings({ awayPenaltyWindowMinutes: 10 }, NOW).awayPenaltyWindowMs).toBe(10 * MINUTE);
+  });
+
+  it('0 表示不节流', () => {
+    expect(normalizeSettings({ awayPenaltyWindowMinutes: 0 }, NOW).awayPenaltyWindowMs).toBe(0);
+  });
+
+  it('负数归零', () => {
+    expect(normalizeSettings({ awayPenaltyWindowMinutes: -1 }, NOW).awayPenaltyWindowMs).toBe(0);
+  });
+});

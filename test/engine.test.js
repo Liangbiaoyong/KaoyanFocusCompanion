@@ -10,7 +10,11 @@ describe('initialSession', () => {
   it('从 IDLE 开始', () => {
     const s = initialSession(T0);
     expect(s).toEqual({
-      status: STATUS.IDLE, startedAt: null, lastActivityAt: null, lastSettledAt: T0,
+      status: STATUS.IDLE,
+      startedAt: null,
+      lastActivityAt: null,
+      lastSettledAt: T0,
+      lastAwayPenaltyAt: null,
     });
   });
 });
@@ -185,6 +189,63 @@ describe('step — 切走惩罚（awayPenalties）', () => {
     const r = step(focusing(), { ...base, now: T0 + MIN, focused: false, classification: 'distract' });
     expect(r.awayPenalties).toBe(1);
     expect(r.distractions).toBe(0);
+  });
+});
+
+describe('step — 切走惩罚的节流', () => {
+  const W = 3 * MIN;
+  const focusing = () => step(initialSession(T0), base).session;
+
+  it('第一次切走照扣', () => {
+    const r = step(focusing(), { ...base, now: T0 + MIN, classification: 'neutral', awayPenaltyWindowMs: W });
+    expect(r.awayPenalties).toBe(1);
+    expect(r.awayPenaltyThrottled).toBe(false);
+  });
+
+  it('窗口内再次切走不扣，但标记为被节流', () => {
+    const first = step(focusing(), { ...base, now: T0 + MIN, classification: 'neutral', awayPenaltyWindowMs: W });
+    const back = step(first.session, { ...base, now: T0 + 2 * MIN, awayPenaltyWindowMs: W });
+    const again = step(back.session, {
+      ...base, now: T0 + 3 * MIN, classification: 'neutral', awayPenaltyWindowMs: W,
+    });
+    expect(again.awayPenalties).toBe(0);
+    expect(again.awayPenaltyThrottled).toBe(true);
+  });
+
+  it('距上次扣分满 3 分钟后重新扣', () => {
+    const first = step(focusing(), { ...base, now: T0 + MIN, classification: 'neutral', awayPenaltyWindowMs: W });
+    const back = step(first.session, { ...base, now: T0 + 2 * MIN, awayPenaltyWindowMs: W });
+    const again = step(back.session, {
+      ...base, now: T0 + 5 * MIN, classification: 'neutral', awayPenaltyWindowMs: W,
+    });
+    expect(again.awayPenalties).toBe(1);
+    expect(again.awayPenaltyThrottled).toBe(false);
+  });
+
+  it('窗口为 0 表示不节流', () => {
+    const first = step(focusing(), { ...base, now: T0 + MIN, classification: 'neutral', awayPenaltyWindowMs: 0 });
+    const back = step(first.session, { ...base, now: T0 + 2 * MIN, awayPenaltyWindowMs: 0 });
+    const again = step(back.session, {
+      ...base, now: T0 + 3 * MIN, classification: 'neutral', awayPenaltyWindowMs: 0,
+    });
+    expect(again.awayPenalties).toBe(1);
+  });
+
+  it('不传窗口参数时不节流（向后兼容）', () => {
+    const first = step(focusing(), { ...base, now: T0 + MIN, classification: 'neutral' });
+    const back = step(first.session, { ...base, now: T0 + 2 * MIN });
+    const again = step(back.session, { ...base, now: T0 + 3 * MIN, classification: 'neutral' });
+    expect(again.awayPenalties).toBe(1);
+  });
+
+  it('节流只针对切走，不影响走神计数', () => {
+    const first = step(focusing(), { ...base, now: T0 + MIN, classification: 'distract', awayPenaltyWindowMs: W });
+    const back = step(first.session, { ...base, now: T0 + 2 * MIN, awayPenaltyWindowMs: W });
+    const again = step(back.session, {
+      ...base, now: T0 + 3 * MIN, classification: 'distract', awayPenaltyWindowMs: W,
+    });
+    expect(again.awayPenalties).toBe(0);
+    expect(again.distractions).toBe(1);
   });
 });
 

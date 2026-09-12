@@ -12,6 +12,7 @@ export function initialSession(now = 0) {
     startedAt: null,
     lastActivityAt: null,
     lastSettledAt: now,
+    lastAwayPenaltyAt: null,
   };
 }
 
@@ -21,7 +22,8 @@ export function initialSession(now = 0) {
  * 不变量：focusMs 非零时必等于 toMs - fromMs（整段计分，调用方据此按日切分入账）。
  *
  * @param {object} session
- * @param {{now:number, classification:string, focused:boolean, idle:boolean}} input
+ * @param {{now:number, classification:string, focused:boolean, idle:boolean,
+ *          awayPenaltyWindowMs?:number}} input
  */
 export function step(session, input) {
   const { now, classification, focused, idle } = input;
@@ -49,7 +51,15 @@ export function step(session, input) {
 
   // 从专注切走本身就是一次"分心"的信号，扣一笔小分。
   // 超时那条已经扣过 10 分钟，不在这里叠加，否则同一动作被罚两次。
-  const awayPenalties = wasFocusing && target !== STATUS.FOCUSING && penalties === 0 ? 1 : 0;
+  // 另外按窗口节流：反复切窗口不该被连罚，否则一分钟能扣掉十分钟。
+  const leavingFocus = wasFocusing && target !== STATUS.FOCUSING && penalties === 0;
+  const windowMs = Math.max(0, Number(input.awayPenaltyWindowMs ?? 0));
+  const throttled = leavingFocus
+    && windowMs > 0
+    && s.lastAwayPenaltyAt != null
+    && now - s.lastAwayPenaltyAt < windowMs;
+  const awayPenalties = leavingFocus && !throttled ? 1 : 0;
+  if (awayPenalties > 0) s.lastAwayPenaltyAt = now;
 
   const distractions =
     target === STATUS.PAUSED_DISTRACTED && s.status !== STATUS.PAUSED_DISTRACTED ? 1 : 0;
@@ -62,5 +72,14 @@ export function step(session, input) {
   }
   s.status = target;
 
-  return { session: s, focusMs, fromMs, toMs: now, penalties, awayPenalties, distractions };
+  return {
+    session: s,
+    focusMs,
+    fromMs,
+    toMs: now,
+    penalties,
+    awayPenalties,
+    awayPenaltyThrottled: leavingFocus && throttled,
+    distractions,
+  };
 }

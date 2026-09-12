@@ -44,10 +44,20 @@ function renderToday(daily) {
     }
   }
 
-  const minutes = bars.reduce((sum, bar) => sum + (bar.end - bar.start), 0) / 60000;
-  $('tlHint').textContent = bars.length === 0
-    ? '专注开始后，这里会画出时间段'
-    : `今天专注 ${bars.length} 段，合计 ${Math.round(minutes)} 分钟（${(minutes / 60).toFixed(1)} 小时）`;
+  const activityMs = bars.reduce((sum, bar) => sum + (bar.end - bar.start), 0);
+  const record = daily[dayKey(now)] ?? {};
+  const countedMs = record.focusMs ?? 0;
+  const penaltyMs = record.penaltyMs ?? 0;
+  const toMin = (ms) => Math.round(ms / 60000);
+
+  if (bars.length === 0 && penaltyMs === 0) {
+    $('tlHint').textContent = '专注开始后，这里会画出时间段';
+  } else {
+    const head = `今天活动 ${bars.length} 段共 ${toMin(activityMs)} 分钟`;
+    $('tlHint').textContent = penaltyMs > 0
+      ? `${head}，被扣 ${toMin(penaltyMs)} 分钟，计入 ${toMin(countedMs)} 分钟`
+      : `${head}，计入 ${toMin(countedMs)} 分钟`;
+  }
 }
 
 /** 最近 7 天并排：单看一天看不出作息规律，一周并排才能看出哪天在划水 */

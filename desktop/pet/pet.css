@@ -247,6 +247,7 @@ html, body {
 .float-label.bad { color: #c0392b; border-color: #eccbc7; }
 .float-label.warn { color: #8a6d3b; border-color: #f0e2bd; }
 .float-label.good { color: #3f7a51; border-color: #cce3d2; }
+.float-label.neutral { color: var(--dim); }
 
 @keyframes floatUp {
   0% { opacity: 0; transform: translate(-50%, 8px) scale(0.9); }

@@ -11,6 +11,7 @@ export function defaultSettings(now) {
     dailyCapMinutes: 480,
     watchdogMinutes: 10,
     awayPenaltyMinutes: 1,
+    awayPenaltyWindowMinutes: 3,
     companionName: '小凤',
   };
 }
@@ -28,6 +29,8 @@ export function normalizeSettings(raw, now) {
     dailyCapMs: (r.dailyCapMinutes ?? d.dailyCapMinutes) * MINUTE,
     watchdogMs: (r.watchdogMinutes ?? d.watchdogMinutes) * MINUTE,
     awayPenaltyMs: Math.max(0, (r.awayPenaltyMinutes ?? d.awayPenaltyMinutes)) * MINUTE,
+    awayPenaltyWindowMs:
+      Math.max(0, (r.awayPenaltyWindowMinutes ?? d.awayPenaltyWindowMinutes)) * MINUTE,
     companionName: name,
   };
 }

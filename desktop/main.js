@@ -411,7 +411,11 @@ async function onSample(rawSample) {
       metGoal: (daily[account.todayDate]?.focusMs ?? 0) >= settings.dailyGoalMs,
     };
 
-    const result = step(session, { now, ...input });
+    const result = step(session, {
+      now,
+      ...input,
+      awayPenaltyWindowMs: settings.awayPenaltyWindowMs,
+    });
     const next = applyStep(account, daily, result, settings);
     session = result.session;
     account = next.account;

@@ -266,6 +266,66 @@ describe('applyStep — 切走惩罚额度可配', () => {
   });
 });
 
+describe('applyStep — 惩罚必须同时打在今日计时上', () => {
+  it('切走同时减少今日计时与成长值', () => {
+    const a = createAccount('2026-09-12');
+    a.growthMs = 10 * MIN;
+    const t = at(2026, 9, 12, 10);
+    const daily = { '2026-09-12': { ...emptyDay(), focusMs: 10 * MIN } };
+    const out = applyStep(a, daily, focusResult(t, 0, { awayPenalties: 1 }), { ...settings, awayPenaltyMs: MIN });
+    expect(out.account.growthMs).toBe(9 * MIN);
+    expect(out.daily['2026-09-12'].focusMs).toBe(9 * MIN);
+    expect(out.account.todayFocusMs).toBe(9 * MIN);
+  });
+
+  it('记录 penaltyMs，供统计页解释时长为何比活动时段少', () => {
+    const a = createAccount('2026-09-12');
+    a.growthMs = 10 * MIN;
+    const t = at(2026, 9, 12, 10);
+    const daily = { '2026-09-12': { ...emptyDay(), focusMs: 10 * MIN } };
+    const out = applyStep(a, daily, focusResult(t, 0, { awayPenalties: 1 }), { ...settings, awayPenaltyMs: MIN });
+    expect(out.daily['2026-09-12'].penaltyMs).toBe(MIN);
+  });
+
+  it('超时也同时减少今日计时（10 分钟）', () => {
+    const a = createAccount('2026-09-12');
+    a.growthMs = 20 * MIN;
+    const t = at(2026, 9, 12, 10);
+    const daily = { '2026-09-12': { ...emptyDay(), focusMs: 20 * MIN } };
+    const out = applyStep(a, daily, focusResult(t, 0, { penalties: 1 }), settings);
+    expect(out.daily['2026-09-12'].focusMs).toBe(10 * MIN);
+    expect(out.account.todayFocusMs).toBe(10 * MIN);
+  });
+
+  it('今日计时的下限也是 0，不会变负', () => {
+    const a = createAccount('2026-09-12');
+    a.growthMs = 20 * MIN;
+    const t = at(2026, 9, 12, 10);
+    const daily = { '2026-09-12': { ...emptyDay(), focusMs: 30 * 1000 } };
+    const out = applyStep(a, daily, focusResult(t, 0, { penalties: 1 }), settings);
+    expect(out.daily['2026-09-12'].focusMs).toBe(0);
+    expect(out.account.todayFocusMs).toBe(0);
+  });
+
+  it('今日没有记录时也能扣（建立记录，不会崩）', () => {
+    const a = createAccount('2026-09-12');
+    a.growthMs = 20 * MIN;
+    const t = at(2026, 9, 12, 10);
+    const out = applyStep(a, {}, focusResult(t, 0, { awayPenalties: 1 }), { ...settings, awayPenaltyMs: MIN });
+    expect(out.daily['2026-09-12'].focusMs).toBe(0);
+    expect(out.daily['2026-09-12'].penaltyMs).toBe(MIN);
+  });
+
+  it('先计分再扣分：一帧里既专注又切走，净额正确', () => {
+    const a = createAccount('2026-09-12');
+    const t = at(2026, 9, 12, 10);
+    // 这一帧计了 5 分钟专注，同时判定切走（扣 1 分钟）
+    const out = applyStep(a, {}, focusResult(t, 5 * MIN, { awayPenalties: 1 }), { ...settings, awayPenaltyMs: MIN });
+    expect(out.daily['2026-09-12'].focusMs).toBe(4 * MIN);
+    expect(out.account.growthMs).toBe(4 * MIN);
+  });
+});
+
 describe('settleDay', () => {
   it('达标则连续天数 +1 并刷新最长记录', () => {
     const a = createAccount('2026-09-12');

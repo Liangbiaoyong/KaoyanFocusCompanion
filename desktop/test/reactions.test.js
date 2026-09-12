@@ -111,6 +111,31 @@ describe('deriveReactions', () => {
     expect(() => deriveReactions(state(), state(), result({ awayPenalties: 1 }), undefined)).not.toThrow();
   });
 
+  it('被节流时只提醒，绝不声称扣了分', () => {
+    const events = deriveReactions(
+      state(), state({ status: 'PAUSED_AWAY' }), result({ awayPenaltyThrottled: true }), settings,
+    );
+    expect(kinds(events)).toEqual([KIND.AWAY_THROTTLED]);
+    // 没扣分却说"扣 1 分钟"是骗人，下次你就不会信这个提示了
+    expect(reactionLabel(events[0])).not.toContain('扣');
+  });
+
+  it('真正扣分时不报节流提示', () => {
+    const events = deriveReactions(
+      state(), state({ status: 'PAUSED_AWAY' }),
+      result({ awayPenalties: 1, awayPenaltyThrottled: false }), settings,
+    );
+    expect(kinds(events)).toEqual([KIND.AWAY]);
+  });
+
+  it('超时优先于节流提示', () => {
+    const events = deriveReactions(
+      state(), state({ status: 'WAITING_ACTIVITY' }),
+      result({ penalties: 1, awayPenaltyThrottled: true }), settings,
+    );
+    expect(kinds(events)).toEqual([KIND.TIMEOUT]);
+  });
+
   it('不改动入参', () => {
     const b = state();
     const a = state({ status: 'PAUSED_AWAY' });
