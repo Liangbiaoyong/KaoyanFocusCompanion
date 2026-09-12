@@ -1,3 +1,4 @@
 node_modules/
 .superpowers/
 desktop/node_modules/
+desktop/dist/

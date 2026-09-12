@@ -100,6 +100,47 @@ html, body {
 }
 .tool:hover { color: var(--accent); }
 
+/* 收起后的精简读数：一条药丸，圆点表示"在不在学" */
+.mini {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+  padding: 4px 11px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  box-shadow: 0 3px 10px rgba(46, 58, 68, 0.14);
+  white-space: nowrap;
+  -webkit-app-region: drag;
+}
+.mini[hidden] { display: none; }
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--track);
+  flex: none;
+  transition: background 300ms ease, box-shadow 300ms ease;
+}
+.dot.focus {
+  background: #4b9a5a;
+  box-shadow: 0 0 0 3px rgba(75, 154, 90, 0.20);
+}
+.dot.doze { background: var(--warm); }
+.dot.off { background: #c8d2da; }
+
+.mini-time {
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.2px;
+}
+.mini-state { font-size: 10px; color: var(--dim); }
+
 .bubble {
   position: relative;
   z-index: 1;

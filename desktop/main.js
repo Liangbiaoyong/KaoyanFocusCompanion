@@ -44,7 +44,15 @@ function log(...args) {
   console.log(...args);
 }
 
-const ROOT = path.join(__dirname, '..');
+/**
+ * 共享纯逻辑（src/core、src/lib）的位置。
+ * 开发态在仓库根的 src/；打包后由 --extra-resource 放进 resources/src。
+ */
+function coreRoot() {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, 'src')
+    : path.join(__dirname, '..', 'src');
+}
 
 let petWindow = null;
 let settingsWindow = null;
@@ -89,7 +97,7 @@ let pushRecentTitle = null;
 let DEFAULT_RULES = null;
 
 async function loadModules() {
-  const core = (p) => load(path.join(ROOT, 'src', p));
+  const core = (p) => load(path.join(coreRoot(), p));
   const own = (p) => load(path.join(__dirname, 'src', p));
 
   ({ createStore } = await core('lib/storage.js'));
@@ -106,13 +114,30 @@ async function loadModules() {
   ({ DEFAULT_RULES } = await own('rules.mjs'));
 }
 
+/**
+ * 组装判定规则。
+ * 关键：把自己真实的进程名并进 selfProcesses——开发态是 electron.exe，
+ * 打包后是 KaoyanFocusCompanion.exe，写死名单必然漏掉一个，
+ * 漏掉的后果就是"点一下桌宠自己就打断计时"。
+ */
+function selfProcessName() {
+  return path.basename(process.execPath).toLowerCase();
+}
+
+function buildRules(rawRules, watchdogMs) {
+  const merged = { ...DEFAULT_RULES, ...(rawRules ?? {}) };
+  merged.selfProcesses = [...new Set([...(merged.selfProcesses ?? []), selfProcessName()])];
+  if (watchdogMs) merged.watchdogMs = watchdogMs;
+  return merged;
+}
+
 // —— 窗口 ——
 
 function createPetWindow(bounds) {
   petBounds = bounds ?? petBounds;
   petWindow = new BrowserWindow({
     width: 220,
-    height: 268,
+    height: 252,
     x: petBounds?.x,
     y: petBounds?.y,
     frame: false,
@@ -390,7 +415,7 @@ async function start() {
 
   const isFirstRun = !rawData.settings;
   settings = normalizeSettings(rawData.settings, now);
-  rules = { ...DEFAULT_RULES, ...(rawData.rules ?? {}), watchdogMs: settings.watchdogMs };
+  rules = buildRules(rawData.rules, settings.watchdogMs);
   flags = { lastStageIndex: null, metGoalDate: null, ...(rawData.flags ?? {}) };
   daily = rawData.daily ?? {};
   petBounds = rawData.petBounds ?? null;
@@ -429,6 +454,13 @@ function registerIpc() {
   ipcMain.handle('pet:open-stats', () => { openStatsWindow(); });
   ipcMain.handle('pet:quit', () => { app.quit(); });
 
+  /** 收起信息面板时把窗口一起收短，避免留一大片透明却会吃掉点击的区域 */
+  ipcMain.handle('pet:set-height', (_event, height) => {
+    if (!petWindow) return;
+    const [width] = petWindow.getSize();
+    petWindow.setSize(width, Math.max(110, Math.min(420, Math.round(Number(height) || 0))));
+  });
+
   ipcMain.on('pet:show-menu', () => {
     const menu = Menu.buildFromTemplate([
       { label: paused ? '继续计时' : '暂停计时', click: togglePause },
@@ -448,7 +480,7 @@ function registerIpc() {
 
   ipcMain.handle('settings:save', async (_event, payload) => {
     settings = normalizeSettings(payload.settings, Date.now());
-    rules = { ...DEFAULT_RULES, ...payload.rules, watchdogMs: settings.watchdogMs };
+    rules = buildRules(payload.rules, settings.watchdogMs);
     rawData.settings = payload.settings;
     await store.saveSettings(payload.settings);
     await store.set('rules', rules);

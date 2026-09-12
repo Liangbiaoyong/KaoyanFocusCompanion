@@ -8,5 +8,6 @@ contextBridge.exposeInMainWorld('pet', {
   togglePause: () => ipcRenderer.invoke('pet:toggle-pause'),
   openSettings: () => ipcRenderer.invoke('pet:open-settings'),
   quit: () => ipcRenderer.invoke('pet:quit'),
+  setHeight: (height) => ipcRenderer.invoke('pet:set-height', height),
   showMenu: () => ipcRenderer.send('pet:show-menu'),
 });
