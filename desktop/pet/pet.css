@@ -201,3 +201,84 @@ html, body {
 }
 .mountain .time-mark { background: rgba(46, 58, 68, 0.32); }
 .mountain .you-mark { background: var(--accent); }
+
+/* —— 反馈：动作发生在事件那一秒，光靠数字感觉不到 ——
+   这些规则必须排在 [data-mood] 之后，才能覆盖呼吸动画。 */
+.phoenix.recoil { animation: recoil 560ms ease; }
+.phoenix.perk { animation: perk 500ms ease; }
+.phoenix.shake { animation: shake 520ms ease; }
+
+@keyframes recoil {
+  0% { transform: translate(0, 0) scale(1); }
+  18% { transform: translate(-7px, 2px) scale(0.93); }
+  42% { transform: translate(6px, 1px) scale(0.96); }
+  66% { transform: translate(-4px, 1px) scale(0.98); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+@keyframes perk {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.16) translateY(-4px); }
+  70% { transform: scale(0.98); }
+  100% { transform: scale(1); }
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  25% { transform: translateX(-4px) rotate(-6deg); }
+  50% { transform: translateX(4px) rotate(6deg); }
+  75% { transform: translateX(-3px) rotate(-3deg); }
+}
+
+.float-label {
+  position: absolute;
+  top: 34px;
+  left: 50%;
+  z-index: 5;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--line);
+  box-shadow: 0 3px 10px rgba(46, 58, 68, 0.18);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: floatUp 1500ms ease forwards;
+}
+.float-label.bad { color: #c0392b; border-color: #eccbc7; }
+.float-label.warn { color: #8a6d3b; border-color: #f0e2bd; }
+.float-label.good { color: #3f7a51; border-color: #cce3d2; }
+
+@keyframes floatUp {
+  0% { opacity: 0; transform: translate(-50%, 8px) scale(0.9); }
+  15% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  72% { opacity: 1; transform: translate(-50%, -14px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -24px) scale(0.96); }
+}
+
+.burst-ring {
+  position: absolute;
+  top: 36px;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  pointer-events: none;
+  animation: burstRing 900ms ease forwards;
+}
+.burst-ring.good { border-color: #4b9a5a; }
+.burst-ring.warn { border-color: var(--warm); }
+.burst-ring.bad { border-color: #c0392b; }
+
+@keyframes burstRing {
+  0% { opacity: 0.85; transform: scale(0.35); }
+  100% { opacity: 0; transform: scale(2.6); }
+}
+
+/* 惩罚时让状态圆点也闪一下，收起状态下同样看得见 */
+.dot.flash { animation: dotFlash 700ms ease 2; }
+@keyframes dotFlash {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.9); }
+}

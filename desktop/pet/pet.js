@@ -1,3 +1,5 @@
+import { reactionLabel, reactionTone } from '../src/reactions.mjs';
+
 // 凤凰的形象随成长阶段变化，精神状态只调制明暗与饱和度。
 // 这样"养成"才看得见——你不是在看一个固定的图标变色。
 const STAGE_GLYPHS = [
@@ -34,6 +36,17 @@ const MINI_VIEW = {
 
 const HEIGHT = { expanded: 252, collapsed: 140 };
 
+// 每种事件配一个动作，让反馈在事件那一秒就发生
+const REACTION_ANIM = {
+  away: 'recoil',
+  timeout: 'recoil',
+  degrade: 'recoil',
+  distract: 'shake',
+  resume: 'perk',
+  evolve: 'perk',
+  goal: 'perk',
+};
+
 const $ = (id) => document.getElementById(id);
 
 function hhmmss(ms) {
@@ -51,7 +64,10 @@ function deltaText(hours) {
 }
 
 function setMini(dot, text, timeText) {
-  $('miniDot').className = `dot ${dot}`;
+  const el = $('miniDot');
+  // 保留 flash 类：每秒一次的重设不能把正在播的闪烁动画掐掉
+  const flashing = el.classList.contains('flash');
+  el.className = `dot ${dot}${flashing ? ' flash' : ''}`;
   $('miniState').textContent = text;
   if (timeText !== undefined) $('miniTime').textContent = timeText;
 }
@@ -106,6 +122,50 @@ function render(snapshot) {
 
 window.pet.onSnapshot(render);
 window.pet.getSnapshot().then(render);
+
+/**
+ * 事件反应：动作 + 飘字 + 光环。
+ * 只扣成长值是"安静"的惩罚——感觉不到，就改不掉。
+ */
+function react(event) {
+  const stage = $('stage');
+  const phoenix = $('phoenix');
+  const tone = reactionTone(event);
+
+  const anim = REACTION_ANIM[event.kind];
+  if (anim) {
+    phoenix.classList.remove('recoil', 'perk', 'shake');
+    void phoenix.offsetWidth; // 强制重排，让同名动画能重播
+    phoenix.classList.add(anim);
+    setTimeout(() => phoenix.classList.remove(anim), 700);
+  }
+
+  const label = reactionLabel(event);
+  if (label) {
+    const el = document.createElement('div');
+    el.className = `float-label ${tone}`;
+    el.textContent = label;
+    stage.append(el);
+    setTimeout(() => el.remove(), 1600);
+  }
+
+  if (tone === 'good' || event.kind === 'timeout') {
+    const ring = document.createElement('div');
+    ring.className = `burst-ring ${tone}`;
+    stage.append(ring);
+    setTimeout(() => ring.remove(), 1000);
+  }
+
+  if (tone === 'bad' || tone === 'warn') {
+    const dot = $('miniDot');
+    dot.classList.remove('flash');
+    void dot.offsetWidth;
+    dot.classList.add('flash');
+    setTimeout(() => dot.classList.remove('flash'), 1500);
+  }
+}
+
+window.pet.onEvent(react);
 
 // 折叠开关放在 tools 里（no-drag），不放拖拽区——拖拽区收不到点击
 $('collapse').addEventListener('click', () => {

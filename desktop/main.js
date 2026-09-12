@@ -73,7 +73,6 @@ let account = null;
 let daily = {};
 let settings = null;
 let rules = null;
-let flags = { lastStageIndex: null, metGoalDate: null };
 let recentWindows = [];
 let lastSample = null;
 let pendingUrl = null;
@@ -100,6 +99,7 @@ let buildRules = null;
 let addSegment = null;
 let recordSegments = null;
 let addDistraction = null;
+let deriveReactions = null;
 let DEFAULT_RULES = null;
 
 async function loadModules() {
@@ -119,6 +119,7 @@ async function loadModules() {
   ({ toEngineInput, pushRecentTitle } = await own('detect.mjs'));
   ({ buildRules } = await own('self.mjs'));
   ({ addSegment, recordSegments, addDistraction } = await own('segments.mjs'));
+  ({ deriveReactions } = await own('reactions.mjs'));
   ({ DEFAULT_RULES } = await own('rules.mjs'));
 }
 
@@ -292,30 +293,21 @@ function notify(title, content) {
   }
 }
 
-// —— 里程碑提示 ——
+// —— 反馈 ——
 
-async function checkMilestones(previousAccount, nextAccount, nextDaily) {
-  const before = stageFor(previousAccount.growthMs).index;
-  const after = stageFor(nextAccount.growthMs).index;
-
-  if (flags.lastStageIndex === null) {
-    flags.lastStageIndex = after;
-  } else if (after > flags.lastStageIndex) {
-    notify('进化了', `凤凰成长为「${stageFor(nextAccount.growthMs).stage.name}」`);
-    flags.lastStageIndex = after;
-  } else if (after < flags.lastStageIndex) {
-    notify('掉了一层', `凤凰退回了「${stageFor(nextAccount.growthMs).stage.name}」，回来吧`);
-    flags.lastStageIndex = after;
+/**
+ * 把事件变成看得见的反应：桌宠上的动画 + 关键节点的托盘气泡。
+ * 只扣成长值是"安静"的惩罚，感觉不到就改不掉。
+ */
+async function handleReactions(events) {
+  if (events.length > 0) log('反馈:', events.map((e) => e.kind).join(','));
+  for (const event of events) {
+    if (petWindow) petWindow.webContents.send('pet:event', event);
+    if (event.kind === 'timeout') notify('发呆超时', '扣了 10 分钟，回来吧');
+    if (event.kind === 'evolve') notify('进化了', `凤凰成长为「${event.stageName}」`);
+    if (event.kind === 'degrade') notify('掉了一层', `凤凰退回了「${event.stageName}」`);
+    if (event.kind === 'goal') notify('今天达标了', '今日专注已达成目标');
   }
-
-  const today = nextAccount.todayDate;
-  const met = (nextDaily[today]?.focusMs ?? 0) >= settings.dailyGoalMs;
-  if (met && flags.metGoalDate !== today) {
-    flags.metGoalDate = today;
-    notify('今天达标了', `已专注 ${Math.round((nextDaily[today].focusMs) / 60000)} 分钟`);
-  }
-
-  await store.set('flags', flags);
 }
 
 // —— 探针 ——
@@ -405,9 +397,16 @@ async function onSample(rawSample) {
     if (skip) return; // 前台是桌宠自己，整帧跳过，避免点一下宠物就打断计时
 
     const now = Date.now();
+    const stageBefore = stageFor(account.growthMs);
+    const before = {
+      status: session.status,
+      stageIndex: stageBefore.index,
+      stageName: stageBefore.stage.name,
+      metGoal: (daily[account.todayDate]?.focusMs ?? 0) >= settings.dailyGoalMs,
+    };
+
     const result = step(session, { now, ...input });
     const next = applyStep(account, daily, result, settings);
-    const previousAccount = account;
     session = result.session;
     account = next.account;
     daily = next.daily;
@@ -418,9 +417,18 @@ async function onSample(rawSample) {
       record.distractionTimes = addDistraction(record.distractionTimes, result.toMs);
     }
 
+    const stageAfter = stageFor(account.growthMs);
+    const after = {
+      status: session.status,
+      stageIndex: stageAfter.index,
+      stageName: stageAfter.stage.name,
+      metGoal: (daily[account.todayDate]?.focusMs ?? 0) >= settings.dailyGoalMs,
+    };
+    const events = deriveReactions(before, after, result, settings);
+
     await store.saveState({ session, account });
     await store.saveDaily(daily);
-    await checkMilestones(previousAccount, account, daily);
+    await handleReactions(events);
     broadcastSnapshot();
   } catch (error) {
     log('计时循环出错:', error);
@@ -451,7 +459,6 @@ async function start() {
   settings = normalizeSettings(rawData.settings, now);
   rules = buildRules(DEFAULT_RULES, rawData.rules, settings.watchdogMs, process.execPath);
   log('自身进程名:', path.basename(process.execPath), '| selfProcesses:', rules.selfProcesses.join(','));
-  flags = { lastStageIndex: null, metGoalDate: null, ...(rawData.flags ?? {}) };
   daily = rawData.daily ?? {};
   petBounds = rawData.petBounds ?? null;
 

@@ -4,6 +4,9 @@ contextBridge.exposeInMainWorld('pet', {
   onSnapshot: (handler) => {
     ipcRenderer.on('pet:snapshot', (_event, snapshot) => handler(snapshot));
   },
+  onEvent: (handler) => {
+    ipcRenderer.on('pet:event', (_event, event) => handler(event));
+  },
   getSnapshot: () => ipcRenderer.invoke('pet:get-snapshot'),
   togglePause: () => ipcRenderer.invoke('pet:toggle-pause'),
   openSettings: () => ipcRenderer.invoke('pet:open-settings'),
