@@ -1,7 +1,7 @@
 const path = require('node:path');
 const fs = require('node:fs');
 const { pathToFileURL } = require('node:url');
-const { app, BrowserWindow, ipcMain, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, Tray, nativeImage } = require('electron');
 
 /** 数据文件位置与读写。内联在主进程里，避免多一个模块。 */
 function dataFilePath(userDataDir) {
@@ -30,7 +30,9 @@ const load = (filePath) => import(pathToFileURL(filePath).href);
  */
 let logFile = null;
 function log(...args) {
-  const line = `[${new Date().toISOString()}] ${args.map((a) => (a instanceof Error ? a.stack : String(a))).join(' ')}\n`;
+  const line = `[${new Date().toISOString()}] ${args
+    .map((a) => (a instanceof Error ? a.stack : String(a)))
+    .join(' ')}\n`;
   try {
     if (logFile) {
       fs.mkdirSync(path.dirname(logFile), { recursive: true });
@@ -46,10 +48,14 @@ const ROOT = path.join(__dirname, '..');
 
 let petWindow = null;
 let settingsWindow = null;
+let statsWindow = null;
+let tray = null;
 let probe = null;
 let urlProbe = null;
+let petBounds = null;
 let paused = false;
 let disposed = false;
+let stopped = false;
 let busy = false;
 
 let session = null;
@@ -57,10 +63,13 @@ let account = null;
 let daily = {};
 let settings = null;
 let rules = null;
+let flags = { lastStageIndex: null, metGoalDate: null };
 let recentWindows = [];
 let lastSample = null;
 let pendingUrl = null;
 let sawFirstSample = false;
+let dataFile = null;
+let rawData = {};
 let store = null;
 
 let createStore = null;
@@ -70,6 +79,7 @@ let initialSession = null;
 let applyStep = null;
 let createAccount = null;
 let buildSnapshot = null;
+let stageFor = null;
 let dayKey = null;
 let createFileArea = null;
 let createProbe = null;
@@ -87,6 +97,7 @@ async function loadModules() {
   ({ step, initialSession } = await core('core/engine.js'));
   ({ applyStep, createAccount } = await core('core/account.js'));
   ({ buildSnapshot } = await core('lib/snapshot.js'));
+  ({ stageFor } = await core('core/growth.js'));
   ({ dayKey } = await core('core/time.js'));
 
   ({ createFileArea } = await own('file-store.mjs'));
@@ -97,12 +108,13 @@ async function loadModules() {
 
 // —— 窗口 ——
 
-function createPetWindow(savedBounds) {
+function createPetWindow(bounds) {
+  petBounds = bounds ?? petBounds;
   petWindow = new BrowserWindow({
     width: 220,
-    height: 260,
-    x: savedBounds?.x,
-    y: savedBounds?.y,
+    height: 268,
+    x: petBounds?.x,
+    y: petBounds?.y,
     frame: false,
     transparent: true,
     resizable: false,
@@ -119,17 +131,17 @@ function createPetWindow(savedBounds) {
   petWindow.loadFile(path.join(__dirname, 'pet/index.html'));
   petWindow.on('moved', () => {
     const [x, y] = petWindow.getPosition();
-    persistBounds({ x, y });
+    petBounds = { x, y };
+    persistBounds(petBounds);
   });
   petWindow.on('closed', () => { petWindow = null; });
+  broadcastSnapshot();
 }
 
 function persistBounds(bounds) {
   try {
-    const file = dataFilePath(app.getPath('userData'));
-    const data = loadJson(file);
-    data.petBounds = bounds;
-    saveJson(file, data);
+    rawData.petBounds = bounds;
+    saveJson(dataFile, rawData);
   } catch {
     /* 位置存不下不影响计时 */
   }
@@ -141,8 +153,8 @@ function openSettingsWindow() {
     return;
   }
   settingsWindow = new BrowserWindow({
-    width: 560,
-    height: 680,
+    width: 580,
+    height: 720,
     title: '考研专注养成 · 设置',
     webPreferences: {
       preload: path.join(__dirname, 'preload-settings.js'),
@@ -154,16 +166,140 @@ function openSettingsWindow() {
   settingsWindow.on('closed', () => { settingsWindow = null; });
 }
 
-function broadcastSnapshot() {
-  if (!petWindow || !account) return;
-  if (paused) {
-    petWindow.webContents.send('pet:snapshot', { paused: true });
+function openStatsWindow() {
+  if (statsWindow) {
+    statsWindow.focus();
+    statsWindow.webContents.send('stats:refresh');
     return;
   }
-  petWindow.webContents.send(
-    'pet:snapshot',
-    buildSnapshot({ account, daily, settings, session }, Date.now()),
-  );
+  statsWindow = new BrowserWindow({
+    width: 560,
+    height: 660,
+    title: '考研专注养成 · 统计',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload-stats.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+  statsWindow.loadFile(path.join(__dirname, 'stats/index.html'));
+  statsWindow.on('closed', () => { statsWindow = null; });
+}
+
+function snapshotNow() {
+  if (!account) return null;
+  if (paused) return { paused: true };
+  return buildSnapshot({ account, daily, settings, session }, Date.now());
+}
+
+function broadcastSnapshot() {
+  if (!petWindow) return;
+  petWindow.webContents.send('pet:snapshot', snapshotNow());
+  if (statsWindow) statsWindow.webContents.send('stats:refresh');
+}
+
+// —— 托盘 ——
+
+function refreshTrayMenu() {
+  if (!tray) return;
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: paused ? '继续计时' : '暂停计时', click: togglePause },
+    { type: 'separator' },
+    { label: '显示 / 隐藏凤凰', click: togglePetVisibility },
+    { label: '设置…', click: openSettingsWindow },
+    { label: '统计…', click: openStatsWindow },
+    { type: 'separator' },
+    {
+      label: '开机自启动',
+      type: 'checkbox',
+      checked: app.getLoginItemSettings().openAtLogin,
+      click: (item) => setAutoStart(item.checked),
+    },
+    { type: 'separator' },
+    { label: '退出', click: () => app.quit() },
+  ]));
+}
+
+function createTray() {
+  const iconPath = path.join(__dirname, 'assets/tray.png');
+  const image = nativeImage.createFromPath(iconPath);
+  if (image.isEmpty()) {
+    log('托盘图标读取失败:', iconPath);
+  }
+  tray = new Tray(image);
+  tray.setToolTip('考研专注养成');
+  tray.on('click', togglePetVisibility);
+  refreshTrayMenu();
+}
+
+/**
+ * 开机自启动。开发态下 process.execPath 是 electron.exe 本身，
+ * 直接注册会开机拉起一个没有项目的 Electron，所以补上应用路径作为参数。
+ */
+function setAutoStart(enabled) {
+  const options = { openAtLogin: !!enabled };
+  if (!app.isPackaged) {
+    options.path = process.execPath;
+    options.args = [path.resolve(__dirname)];
+  }
+  app.setLoginItemSettings(options);
+  log('开机自启动 ->', enabled);
+  refreshTrayMenu();
+}
+
+function togglePause() {
+  paused = !paused;
+  refreshTrayMenu();
+  broadcastSnapshot();
+}
+
+function togglePetVisibility() {
+  if (petWindow && petWindow.isVisible()) {
+    petWindow.hide();
+    return;
+  }
+  if (petWindow) {
+    petWindow.show();
+    petWindow.focus();
+    return;
+  }
+  createPetWindow(petBounds);
+  refreshTrayMenu();
+}
+
+function notify(title, content) {
+  log('提示:', title, content);
+  try {
+    if (tray) tray.displayBalloon({ title, content });
+  } catch (error) {
+    log('气泡提示失败:', error);
+  }
+}
+
+// —— 里程碑提示 ——
+
+async function checkMilestones(previousAccount, nextAccount, nextDaily) {
+  const before = stageFor(previousAccount.growthMs).index;
+  const after = stageFor(nextAccount.growthMs).index;
+
+  if (flags.lastStageIndex === null) {
+    flags.lastStageIndex = after;
+  } else if (after > flags.lastStageIndex) {
+    notify('进化了', `凤凰成长为「${stageFor(nextAccount.growthMs).stage.name}」`);
+    flags.lastStageIndex = after;
+  } else if (after < flags.lastStageIndex) {
+    notify('掉了一层', `凤凰退回了「${stageFor(nextAccount.growthMs).stage.name}」，回来吧`);
+    flags.lastStageIndex = after;
+  }
+
+  const today = nextAccount.todayDate;
+  const met = (nextDaily[today]?.focusMs ?? 0) >= settings.dailyGoalMs;
+  if (met && flags.metGoalDate !== today) {
+    flags.metGoalDate = today;
+    notify('今天达标了', `已专注 ${Math.round((nextDaily[today].focusMs) / 60000)} 分钟`);
+  }
+
+  await store.set('flags', flags);
 }
 
 // —— 探针 ——
@@ -173,7 +309,7 @@ function startBaseProbe() {
     scriptPath: path.join(__dirname, 'native/foreground.ps1'),
     intervalMs: 1000,
     onSample,
-    onError: (error) => console.error('[桌宠] 探针错误：', error.message),
+    onError: (error) => log('探针错误:', error),
   });
 }
 
@@ -188,7 +324,7 @@ function refreshUrlProbe() {
       scriptPath: path.join(__dirname, 'native/uia-url.ps1'),
       intervalMs: 3000,
       onSample: (sample) => { pendingUrl = sample.url; },
-      onError: (error) => console.error('[桌宠] 精确探针错误：', error.message),
+      onError: (error) => log('精确探针错误:', error),
     });
   } else if (!wanted && urlProbe) {
     urlProbe.stop();
@@ -198,7 +334,7 @@ function refreshUrlProbe() {
 }
 
 async function onSample(rawSample) {
-  if (disposed || paused || busy) return;
+  if (disposed || stopped || paused || busy) return;
   busy = true;
   try {
     if (!sawFirstSample) {
@@ -218,12 +354,14 @@ async function onSample(rawSample) {
     const now = Date.now();
     const result = step(session, { now, ...input });
     const next = applyStep(account, daily, result, settings);
+    const previousAccount = account;
     session = result.session;
     account = next.account;
     daily = next.daily;
 
     await store.saveState({ session, account });
     await store.saveDaily(daily);
+    await checkMilestones(previousAccount, account, daily);
     broadcastSnapshot();
   } catch (error) {
     log('计时循环出错:', error);
@@ -238,95 +376,139 @@ async function start() {
   await loadModules();
   log('模块加载完成');
 
-  const file = dataFilePath(app.getPath('userData'));
+  dataFile = dataFilePath(app.getPath('userData'));
   logFile = path.join(app.getPath('userData'), 'kaoyan-focus.log');
-  const raw = loadJson(file);
+  rawData = loadJson(dataFile);
   const now = Date.now();
-  log('数据文件:', file, '| 已有键:', Object.keys(raw).join(',') || '(空)');
+  log('数据文件:', dataFile, '| 已有键:', Object.keys(rawData).join(',') || '(空)');
 
   store = createStore(createFileArea({
-    load: () => raw,
-    save: (data) => saveJson(file, data),
+    load: () => rawData,
+    save: (data) => saveJson(dataFile, data),
     onError: (error) => log('落盘失败:', error),
   }));
 
-  settings = normalizeSettings(raw.settings, now);
-  rules = { ...DEFAULT_RULES, ...(raw.rules ?? {}), watchdogMs: settings.watchdogMs };
-  daily = raw.daily ?? {};
-  const state = raw.state ?? {
+  const isFirstRun = !rawData.settings;
+  settings = normalizeSettings(rawData.settings, now);
+  rules = { ...DEFAULT_RULES, ...(rawData.rules ?? {}), watchdogMs: settings.watchdogMs };
+  flags = { lastStageIndex: null, metGoalDate: null, ...(rawData.flags ?? {}) };
+  daily = rawData.daily ?? {};
+  petBounds = rawData.petBounds ?? null;
+
+  const state = rawData.state ?? {
     session: initialSession(now),
     account: createAccount(dayKey(now)),
   };
   session = state.session;
   account = state.account;
 
-  createPetWindow(raw.petBounds ?? null);
-  log('桌宠窗口已创建');
+  createPetWindow(petBounds);
+  createTray();
   startBaseProbe();
   refreshUrlProbe();
-  log('探针已启动');
-  broadcastSnapshot();
+  log('桌宠、托盘、探针均已启动');
+
+  if (isFirstRun) {
+    log('首次启动，打开设置页');
+    openSettingsWindow();
+    notify('先设一下', '填上考试日期和每日目标，凤凰才知道要往哪爬');
+  }
 }
 
 // —— IPC ——
 
-ipcMain.handle('pet:get-snapshot', () => {
-  if (!account) return null;
-  if (paused) return { paused: true };
-  return buildSnapshot({ account, daily, settings, session }, Date.now());
-});
+function registerIpc() {
+  ipcMain.handle('pet:get-snapshot', () => snapshotNow());
 
-ipcMain.handle('pet:toggle-pause', () => {
-  paused = !paused;
-  broadcastSnapshot();
-  return { paused };
-});
+  ipcMain.handle('pet:toggle-pause', () => {
+    togglePause();
+    return { paused };
+  });
 
-ipcMain.handle('pet:open-settings', () => {
-  openSettingsWindow();
-});
+  ipcMain.handle('pet:open-settings', () => { openSettingsWindow(); });
+  ipcMain.handle('pet:open-stats', () => { openStatsWindow(); });
+  ipcMain.handle('pet:quit', () => { app.quit(); });
 
-ipcMain.handle('pet:quit', () => {
+  ipcMain.on('pet:show-menu', () => {
+    const menu = Menu.buildFromTemplate([
+      { label: paused ? '继续计时' : '暂停计时', click: togglePause },
+      { label: '设置…', click: openSettingsWindow },
+      { label: '统计…', click: openStatsWindow },
+      { type: 'separator' },
+      { label: '退出', click: () => app.quit() },
+    ]);
+    menu.popup({ window: petWindow });
+  });
+
+  ipcMain.handle('settings:get', () => ({
+    settings,
+    rules,
+    autoStart: app.getLoginItemSettings().openAtLogin,
+  }));
+
+  ipcMain.handle('settings:save', async (_event, payload) => {
+    settings = normalizeSettings(payload.settings, Date.now());
+    rules = { ...DEFAULT_RULES, ...payload.rules, watchdogMs: settings.watchdogMs };
+    rawData.settings = payload.settings;
+    await store.saveSettings(payload.settings);
+    await store.set('rules', rules);
+    refreshUrlProbe();
+    broadcastSnapshot();
+    return { ok: true };
+  });
+
+  ipcMain.handle('settings:recent', () => recentWindows);
+  ipcMain.handle('settings:set-autostart', (_event, enabled) => {
+    setAutoStart(enabled);
+    return { autoStart: app.getLoginItemSettings().openAtLogin };
+  });
+  ipcMain.handle('settings:close', () => { settingsWindow?.close(); });
+  ipcMain.handle('settings:open-stats', () => { openStatsWindow(); });
+  ipcMain.handle('settings:reset-today', async () => {
+    const today = dayKey(Date.now());
+    if (daily[today]) delete daily[today];
+    account.todayFocusMs = 0;
+    await store.saveDaily(daily);
+    broadcastSnapshot();
+    return { ok: true };
+  });
+
+  ipcMain.handle('stats:get', () => ({ daily, snapshot: snapshotNow() }));
+  ipcMain.handle('stats:close', () => { statsWindow?.close(); });
+}
+
+// —— 生命周期与单实例 ——
+
+const gotLock = app.requestSingleInstanceLock();
+
+if (!gotLock) {
   app.quit();
-});
+} else {
+  app.on('second-instance', () => {
+    if (!petWindow) {
+      createPetWindow(petBounds);
+      return;
+    }
+    if (petWindow.isMinimized()) petWindow.restore();
+    petWindow.show();
+    petWindow.focus();
+  });
 
-ipcMain.on('pet:show-menu', () => {
-  const menu = Menu.buildFromTemplate([
-    { label: paused ? '继续计时' : '暂停计时', click: () => { paused = !paused; broadcastSnapshot(); } },
-    { label: '设置…', click: openSettingsWindow },
-    { type: 'separator' },
-    { label: '退出', click: () => app.quit() },
-  ]);
-  menu.popup({ window: petWindow });
-});
+  registerIpc();
 
-ipcMain.handle('settings:get', () => ({ settings, rules }));
+  app.whenReady().then(start).catch((error) => {
+    log('启动失败:', error);
+    app.quit();
+  });
 
-ipcMain.handle('settings:save', async (_event, payload) => {
-  settings = normalizeSettings(payload.settings, Date.now());
-  rules = { ...DEFAULT_RULES, ...payload.rules, watchdogMs: settings.watchdogMs };
-  await store.saveSettings(payload.settings);
-  await store.set('rules', rules);
-  refreshUrlProbe();
-  broadcastSnapshot();
-  return { ok: true };
-});
+  // 托盘常驻：关掉所有窗口也不退出，只能从托盘菜单退出
+  app.on('window-all-closed', () => {});
 
-ipcMain.handle('settings:recent', () => recentWindows);
-
-ipcMain.handle('settings:close', () => {
-  settingsWindow?.close();
-});
-
-// —— 生命周期 ——
-
-app.whenReady().then(start).catch((error) => {
-  log('启动失败:', error);
-  app.quit();
-});
-
-app.on('before-quit', () => {
-  disposed = true;
-  probe?.stop();
-  urlProbe?.stop();
-});
+  app.on('before-quit', () => {
+    disposed = true;
+    stopped = true;
+    probe?.stop();
+    urlProbe?.stop();
+    tray?.destroy();
+  });
+}

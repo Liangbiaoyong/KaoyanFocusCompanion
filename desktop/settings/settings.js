@@ -89,6 +89,7 @@ async function load() {
   const payload = await window.api.getConfig();
   settings = payload.settings;
   rules = payload.rules;
+  $('autoStart').checked = payload.autoStart === true;
   recent = await window.api.getRecent();
   fill();
   renderRecent();
@@ -125,6 +126,21 @@ for (const [kind, addId, inputId] of [
 
 $('save').addEventListener('click', save);
 $('close').addEventListener('click', () => window.api.close());
+$('openStats').addEventListener('click', () => window.api.openStats());
+
+$('autoStart').addEventListener('change', async () => {
+  const result = await window.api.setAutoStart($('autoStart').checked);
+  $('autoStart').checked = result.autoStart === true;
+  $('status').textContent = result.autoStart ? '已开启开机自启动' : '已关闭开机自启动';
+  setTimeout(() => { $('status').textContent = ''; }, 1800);
+});
+
+$('resetToday').addEventListener('click', async () => {
+  if (!window.confirm('确定清空今天的专注计时吗？累计时长和成长值不受影响。')) return;
+  await window.api.resetToday();
+  $('status').textContent = '今天的计时已清空';
+  setTimeout(() => { $('status').textContent = ''; }, 1800);
+});
 
 load();
 

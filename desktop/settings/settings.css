@@ -94,4 +94,6 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .add { display: flex; gap: 8px; margin-top: 8px; }
 .add input { flex: 1; min-width: 0; }
 
+.row2 { display: flex; gap: 8px; margin: 10px 0 0; flex-wrap: wrap; }
+
 .actions { display: flex; align-items: center; gap: 12px; }
