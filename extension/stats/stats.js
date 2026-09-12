@@ -1,5 +1,5 @@
-import { STORAGE_KEYS } from '../lib/storage.js';
-import { dayKey } from '../core/time.js';
+import { STORAGE_KEYS } from '../../src/lib/storage.js';
+import { dayKey } from '../../src/core/time.js';
 
 const $ = (id) => document.getElementById(id);
 const DAYS = 30;

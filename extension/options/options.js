@@ -1,7 +1,7 @@
-import { createStore, STORAGE_KEYS } from '../lib/storage.js';
-import { defaultSettings, normalizeSettings } from '../lib/settings.js';
-import { dayKey } from '../core/time.js';
-import { DEFAULT_STUDY_RULES } from '../core/sites.js';
+import { createStore, STORAGE_KEYS } from '../../src/lib/storage.js';
+import { defaultSettings, normalizeSettings } from '../../src/lib/settings.js';
+import { dayKey } from '../../src/core/time.js';
+import { DEFAULT_STUDY_RULES } from '../../src/core/sites.js';
 
 const store = createStore(chrome.storage.local);
 const $ = (id) => document.getElementById(id);

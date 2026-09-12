@@ -2,8 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
+// 扩展已归档到 extension/，这个测试校验的是归档产物本身
 const manifest = JSON.parse(
-  readFileSync(fileURLToPath(new URL('../manifest.json', import.meta.url)), 'utf8'),
+  readFileSync(fileURLToPath(new URL('../extension/manifest.json', import.meta.url)), 'utf8'),
 );
 
 describe('manifest', () => {

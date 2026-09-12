@@ -1,5 +1,5 @@
-import { createStore, STORAGE_KEYS } from '../lib/storage.js';
-import { defaultSettings, normalizeSettings } from '../lib/settings.js';
+import { createStore, STORAGE_KEYS } from '../../src/lib/storage.js';
+import { defaultSettings, normalizeSettings } from '../../src/lib/settings.js';
 
 const store = createStore(chrome.storage.local);
 const $ = (id) => document.getElementById(id);

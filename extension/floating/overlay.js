@@ -1,4 +1,4 @@
-import { STORAGE_KEYS } from '../lib/storage.js';
+import { STORAGE_KEYS } from '../../src/lib/storage.js';
 
 const MOOD_EMOJI = { alive: '\u{1F426}', dozing: '\u{1F425}', wilted: '\u{1F423}' };
 const STATE_TEXT = {

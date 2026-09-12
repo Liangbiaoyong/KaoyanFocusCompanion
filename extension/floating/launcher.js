@@ -9,7 +9,7 @@ function setStatus(text, ok = false) {
 function mountOverlayInto(doc) {
   const link = doc.createElement('link');
   link.rel = 'stylesheet';
-  link.href = chrome.runtime.getURL('src/floating/overlay.css');
+  link.href = chrome.runtime.getURL('floating/overlay.css');
   doc.head.append(link);
 
   const mount = doc.createElement('div');
@@ -18,13 +18,13 @@ function mountOverlayInto(doc) {
 
   const script = doc.createElement('script');
   script.type = 'module';
-  script.src = chrome.runtime.getURL('src/floating/overlay.js');
+  script.src = chrome.runtime.getURL('floating/overlay.js');
   doc.body.append(script);
 }
 
 async function openFallbackWindow() {
   await chrome.windows.create({
-    url: chrome.runtime.getURL('src/floating/overlay.html'),
+    url: chrome.runtime.getURL('floating/overlay.html'),
     type: 'popup',
     width: 340,
     height: 210,
@@ -63,5 +63,5 @@ async function openFloating() {
 $('openPip').addEventListener('click', openFloating);
 $('openOptions').addEventListener('click', () => chrome.runtime.openOptionsPage());
 $('openStats').addEventListener('click', () => {
-  chrome.tabs.create({ url: chrome.runtime.getURL('src/stats/index.html') });
+  chrome.tabs.create({ url: chrome.runtime.getURL('stats/index.html') });
 });

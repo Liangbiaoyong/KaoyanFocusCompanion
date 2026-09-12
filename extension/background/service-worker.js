@@ -1,9 +1,9 @@
-import { createStore, STORAGE_KEYS } from '../lib/storage.js';
-import { createClassifier } from '../core/sites.js';
-import { initialSession, step } from '../core/engine.js';
-import { createAccount, applyStep } from '../core/account.js';
-import { buildSnapshot } from '../lib/snapshot.js';
-import { dayKey } from '../core/time.js';
+import { createStore, STORAGE_KEYS } from '../../src/lib/storage.js';
+import { createClassifier } from '../../src/core/sites.js';
+import { initialSession, step } from '../../src/core/engine.js';
+import { createAccount, applyStep } from '../../src/core/account.js';
+import { buildSnapshot } from '../../src/lib/snapshot.js';
+import { dayKey } from '../../src/core/time.js';
 
 const store = createStore(chrome.storage.local);
 
@@ -118,7 +118,7 @@ async function openLauncher() {
     }
   }
   const win = await chrome.windows.create({
-    url: chrome.runtime.getURL('src/floating/launcher.html'),
+    url: chrome.runtime.getURL('floating/launcher.html'),
     type: 'popup',
     width: 380,
     height: 340,
@@ -167,7 +167,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   settingsCache = await store.loadSettings(now);
   applyWatchdog(settingsCache);
   if (details.reason === 'install') {
-    chrome.tabs.create({ url: chrome.runtime.getURL('src/onboarding/index.html') });
+    chrome.tabs.create({ url: chrome.runtime.getURL('onboarding/index.html') });
   }
   kick();
 });
