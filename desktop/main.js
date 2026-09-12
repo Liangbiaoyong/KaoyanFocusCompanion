@@ -65,6 +65,8 @@ let paused = false;
 let disposed = false;
 let stopped = false;
 let busy = false;
+let baseProbeFailures = 0;
+let urlProbeFailures = 0;
 
 let session = null;
 let account = null;
@@ -318,12 +320,40 @@ async function checkMilestones(previousAccount, nextAccount, nextDaily) {
 
 // —— 探针 ——
 
+/**
+ * 探针崩了必须自动重启并最终告知使用者。
+ * 静默失效是这类工具最糟的失败方式——计时停了但你毫不知情，还以为自己在学。
+ */
+function restartWithBackoff(label, attempt, restart) {
+  if (stopped || disposed) return;
+  const delay = Math.min(30000, 1000 * 2 ** Math.min(attempt, 5));
+  log(`${label} 将在 ${delay}ms 后重启（第 ${attempt} 次）`);
+  setTimeout(() => {
+    if (stopped || disposed) return;
+    try {
+      restart();
+    } catch (error) {
+      log(`${label} 重启失败:`, error);
+    }
+  }, delay);
+}
+
 function startBaseProbe() {
   probe = createProbe({
     scriptPath: path.join(__dirname, 'native/foreground.ps1'),
     intervalMs: 1000,
     onSample,
-    onError: (error) => log('探针错误:', error),
+    onError: (error) => {
+      log('探针错误:', error);
+      baseProbeFailures += 1;
+      if (baseProbeFailures === 3) {
+        notify('前台探针异常', '计时可能已经停住，重启桌宠可恢复');
+      }
+      restartWithBackoff('基础探针', baseProbeFailures, () => {
+        try { probe?.stop(); } catch { /* 已退出 */ }
+        startBaseProbe();
+      });
+    },
   });
 }
 
@@ -338,7 +368,15 @@ function refreshUrlProbe() {
       scriptPath: path.join(__dirname, 'native/uia-url.ps1'),
       intervalMs: 3000,
       onSample: (sample) => { pendingUrl = sample.url; },
-      onError: (error) => log('精确探针错误:', error),
+      onError: (error) => {
+        log('精确探针错误:', error);
+        urlProbeFailures += 1;
+        restartWithBackoff('精确探针', urlProbeFailures, () => {
+          try { urlProbe?.stop(); } catch { /* 已退出 */ }
+          urlProbe = null;
+          refreshUrlProbe();
+        });
+      },
     });
   } else if (!wanted && urlProbe) {
     urlProbe.stop();
@@ -355,6 +393,7 @@ async function onSample(rawSample) {
       sawFirstSample = true;
       log('收到第一个探针样本:', JSON.stringify(rawSample));
     }
+    baseProbeFailures = 0; // 恢复正常，退避计数清零
     const sample = mergeSample(lastSample, {
       ...rawSample,
       url: rules.exactMode ? pendingUrl : null,
@@ -512,6 +551,9 @@ const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
 } else {
+  // 让 Windows 正确归类任务栏窗口与通知来源
+  app.setAppUserModelId('KaoyanFocusCompanion');
+
   app.on('second-instance', () => {
     if (!petWindow) {
       createPetWindow(petBounds);

@@ -97,3 +97,5 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .row2 { display: flex; gap: 8px; margin: 10px 0 0; flex-wrap: wrap; }
 
 .actions { display: flex; align-items: center; gap: 12px; }
+
+code { background:#eef2f5; padding:1px 5px; border-radius:3px; font-size:11px; }
