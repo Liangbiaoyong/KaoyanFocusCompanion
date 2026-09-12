@@ -2,10 +2,53 @@
 <html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
-    <title>设置</title>
+    <title>考研专注养成 · 设置</title>
+    <link rel="stylesheet" href="options.css" />
   </head>
-  <body style="font-family: system-ui; padding: 16px">
+  <body>
     <h1>设置</h1>
-    <p><a href="../diagnostics/index.html">打开诊断页</a></p>
+
+    <section class="card">
+      <h2>目标</h2>
+      <label>考试日期 <input type="date" id="examDate" /></label>
+      <label>每日目标（分钟）<input type="number" id="dailyGoalMinutes" min="1" max="1440" /></label>
+      <label>每日计入上限（分钟）<input type="number" id="dailyCapMinutes" min="1" max="1440" /></label>
+      <label>看门狗阈值（分钟）<input type="number" id="watchdogMinutes" min="1" max="120" /></label>
+      <label>伙伴名字 <input type="text" id="companionName" maxlength="12" /></label>
+      <p class="hint" id="startDateHint"></p>
+    </section>
+
+    <section class="card">
+      <h2>站点规则</h2>
+      <p class="hint">学习名单里的站点会计分；分心名单里的站点会停表并记一次走神；其余一律视为中性（只停表）。规则可以是 <code>example.com</code>（含子域）或 <code>*.pdf</code>。</p>
+
+      <h3>学习</h3>
+      <ul id="studyList" class="rules"></ul>
+      <div class="add">
+        <input type="text" id="studyInput" placeholder="example.com 或 *.pdf" />
+        <button id="studyAdd">添加</button>
+      </div>
+
+      <h3>分心</h3>
+      <ul id="distractList" class="rules"></ul>
+      <div class="add">
+        <input type="text" id="distractInput" placeholder="xiaohongshu.com" />
+        <button id="distractAdd">添加</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>诊断</h2>
+      <p class="hint">
+        <a href="../diagnostics/index.html" target="_blank">打开技术验证页</a>（用于确认能否读取本地 PDF 地址）
+      </p>
+    </section>
+
+    <div class="actions">
+      <button id="save" class="primary">保存</button>
+      <span id="status" class="hint"></span>
+    </div>
+
+    <script type="module" src="options.js"></script>
   </body>
 </html>
