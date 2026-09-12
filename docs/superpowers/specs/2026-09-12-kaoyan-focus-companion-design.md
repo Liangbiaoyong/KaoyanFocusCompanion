@@ -300,3 +300,88 @@ manifest.json
 - 新增 `src/floating/`：`overlay.html` / `overlay.css` / `overlay.js`（面板本体）+ `launcher.html` / `launcher.js`（控制台与画中画引导）
 - 删除 `src/sidepanel/`（已由悬浮窗取代，可用 `git checkout <commit> -- src/sidepanel` 找回）
 - `src/background/service-worker.js`：新增 `action.onClicked` 与 `windows.onRemoved` 处理
+
+### 2026-09-12 · 转向 Windows 桌宠（原生应用）
+
+**原因**：画中画方案能浮在 PDF 上，但窗口的标题栏与悬停工具栏由浏览器绘制，CSS 无法触及，观感不佳。要得到"无边框、透明背景、只有一只凤凰浮在桌面上"的桌宠，必须走原生窗口。
+
+**扩展退役**：测量改由桌宠自己做，浏览器扩展整体停用并归档到 `extension/`。
+
+#### 测量的新来源
+
+桌宠通过 Win32 与 UI Automation 读四个信号：
+
+| 信号 | 来源 | 何时用 |
+|---|---|---|
+| 前台窗口进程名 | `GetForegroundWindow` + `GetWindowThreadProcessId` + 进程查询 | 总是 |
+| 前台窗口标题 | `GetWindowText` | 总是 |
+| 系统全局空闲时长 | `GetLastInputInfo` | 总是 |
+| 前台浏览器地址栏内容 | UI Automation，按控件名读 `ValuePattern` | 仅「精确模式」开启时 |
+
+**基础探针**：Electron 主进程常驻一个 PowerShell 子进程（`desktop/native/foreground.ps1`），用 `Add-Type` P/Invoke 前三个 API，每 1 秒往 stdout 打一行 JSON；Node 端读 stdout 解析成样本流。
+
+**精确探针（可选）**：`desktop/native/uia-url.ps1` 走 UI Automation 读地址栏。**已实测可用**——Chrome 与 Edge 均能读到，中文系统下控件名为「地址和搜索栏」，`AutomationId` 每次变化但控件名稳定，因此按控件名匹配。
+
+> 为什么不用原生 Node addon：需要 node-gyp + MSVC 编译链。PowerShell 零编译依赖，且已实测可用。
+
+**精确模式的已知代价**（必须在设置页向使用者说明）：
+
+1. Chromium 一旦检测到无障碍客户端就会**持续构建并维护无障碍树**，使浏览器常驻在无障碍模式下。这是浏览器本身的额外开销，非本程序的开销；只要还在轮询，它就不会退出该模式。
+2. 首次查询前需约 2–3 秒「唤醒」，之后才可读。
+3. 控件名随浏览器语言变化，无障碍树结构随浏览器版本变化，**脆弱**。因此必须保留标题回退路径。
+4. 若浏览器以管理员权限运行而本程序不是，受 UIPI 限制读不到。
+
+#### 判定分层
+
+按精度递降，前一层读不到就退到下一层：
+
+1. **URL 层**（仅精确模式开启且读到时）：对地址栏内容做域名匹配。
+2. **标题层**：对窗口标题做关键词匹配。
+3. **进程层**：只判断前台进程是否属于浏览器白名单。
+
+#### 计分规则（取代第 4.1、4.2 节）
+
+三条**同时满足**才走表：
+
+1. **前台窗口属于"学习来源"**
+   - **浏览器模式**（默认）：前台进程名在浏览器白名单内（默认 `msedge.exe`、`chrome.exe`、`firefox.exe`）
+   - **全局模式**：任何前台窗口都算
+2. **当前内容不属于"学习外"**——按上面的分层判定，命中学习外名单则不计分
+3. **全局空闲时长 < 看门狗阈值**（默认 10 分钟）
+
+站点分类从三档（study / neutral / distract）简化为二档：**正常计分** / **学习外**（停表 + 记一次走神）。「学习外」名单同时接受**域名规则**（URL 层用）与**标题关键词**（标题层用）。默认内置标题关键词：`哔哩哔哩`、`bilibili`、`知乎`。
+
+其余规则不变：超时从成长值扣 10 分钟、每日计入上限 8 小时、跨天结算、凤凰 12 阶段、山与精神值、连续天数与补签卡。
+
+#### 桌面形态
+
+- 无边框、透明背景、置顶、不进任务栏的窗口（`frame:false`、`transparent:true`、`alwaysOnTop:true`、`skipTaskbar:true`）
+- 凤凰本体即拖拽区；窗口位置持久化
+- 双击：展开/收起信息条
+- 右键菜单：开始/暂停、设置、统计、退出
+
+#### 复用与新增
+
+| 模块 | 处置 |
+|---|---|
+| `src/core/time.js`、`engine.js`、`account.js`、`growth.js` | **原样复用**，其单元测试继续有效 |
+| `src/lib/settings.js`、`snapshot.js` | 原样复用 |
+| `src/lib/storage.js` | 复用 `createStore`，注入一个**文件后端**替代 `chrome.storage.local` |
+| `desktop/src/rules.js` | 新增（纯函数，TDD）：进程白名单与标题关键词匹配 |
+| `desktop/src/file-store.js` | 新增（TDD）：实现 `{get, set}` 的文件后端 |
+| `desktop/src/probe.js` | 新增：拉起/关闭 PowerShell 探针，解析 stdout |
+| `desktop/main.js` | 新增：Electron 主进程、桌宠窗口、tick 循环 |
+| `desktop/pet/`、`desktop/settings/` | 新增：桌宠界面、设置界面 |
+| 扩展专有部分（`manifest.json`、`background/`、`floating/`、`diagnostics/`、`onboarding/`、`options/`、`stats/`） | 归档到 `extension/` |
+
+`src/core` 与 `src/lib` 保持不动，因此扩展归档后若需复活，只需修相对 import 路径。
+
+#### 设置项
+
+模式（浏览器 / 全局）、**精确模式开关**（读取浏览器地址栏，附代价说明）、浏览器白名单（进程名）、学习外名单（域名规则 + 标题关键词，含**「把当前窗口加进去」**——从后台维护的最近前台窗口滚动列表里挑，避开"点按钮时前台已变成设置窗口"的鸡生蛋问题）、看门狗阈值、考试日期、每日目标、凤凰名字。
+
+#### 必须处理的一个自干扰
+
+拖拽或点击桌宠时，前台窗口会变成桌宠自身进程（`electron.exe`），按规则会立刻判定为"非浏览器"→ 停表，使用者的学习时间会被自己的操作打断。
+
+**对策**：探针侧识别出前台进程是本程序自身时，**保持上一次的有效判定**，不产生状态迁移。
