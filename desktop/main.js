@@ -1,7 +1,7 @@
 const path = require('node:path');
 const fs = require('node:fs');
 const { pathToFileURL } = require('node:url');
-const { app, BrowserWindow, ipcMain, Menu, Tray, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, Tray, nativeImage, screen } = require('electron');
 
 /** 数据文件位置与读写。内联在主进程里，避免多一个模块。 */
 function dataFilePath(userDataDir) {
@@ -100,6 +100,7 @@ let addSegment = null;
 let recordSegments = null;
 let addDistraction = null;
 let deriveReactions = null;
+let clampToWorkAreas = null;
 let DEFAULT_RULES = null;
 
 async function loadModules() {
@@ -120,13 +121,18 @@ async function loadModules() {
   ({ buildRules } = await own('self.mjs'));
   ({ addSegment, recordSegments, addDistraction } = await own('segments.mjs'));
   ({ deriveReactions } = await own('reactions.mjs'));
+  ({ clampToWorkAreas } = await own('placement.mjs'));
   ({ DEFAULT_RULES } = await own('rules.mjs'));
 }
 
 // —— 窗口 ——
 
 function createPetWindow(bounds) {
-  petBounds = bounds ?? petBounds;
+  // 副屏拔掉后旧坐标会落在屏幕外，凤凰就找不回来了，启动时校正一次
+  petBounds = clampToWorkAreas(
+    bounds ?? petBounds,
+    screen.getAllDisplays().map((display) => display.workArea),
+  );
   petWindow = new BrowserWindow({
     width: 220,
     height: 252,
