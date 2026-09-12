@@ -1310,6 +1310,7 @@ describe('settleDay', () => {
   it('补签卡用尽后连续天数归零', () => {
     const a = createAccount('2026-09-12');
     a.streak = 5;
+    a.bestStreak = 5;
     a.makeupUsed = MAKEUP_PER_MONTH;
     const daily = { '2026-09-12': { ...emptyDay(), focusMs: 0 } };
     settleDay(a, daily, '2026-09-12', settings);
